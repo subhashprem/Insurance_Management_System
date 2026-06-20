@@ -1,6 +1,6 @@
 # Developer Setup & Packaging Guide
 
-Welcome to the **Insurance Records Management System** development environment. This guide outlines how to set up the codebase, run the development environment, customize accounts, and build clean production installers for clients.
+Welcome to the **Insurance Policy Records Management System** development environment. This guide outlines how to set up the codebase, run the development environment, customize accounts, and build clean production installers for clients.
 
 ---
 
@@ -69,7 +69,7 @@ To ship a pre-seeded installer to a client with their credentials pre-loaded:
 ### 4. Locate the Zip File
 Once the build is complete, you will find the ready-to-ship installer in the root folder of the project:
 * 📁 **ZIP Archive (Share this)**: `Insurance_Setup_Exe.zip`
-* 📁 **Raw Executable**: `release/Insurance Records Management System Setup 1.0.1.exe`
+* 📁 **Raw Executable**: `release/Insurance Policy Records Management System Setup 1.0.1.exe`
 
 ---
 

@@ -57,7 +57,7 @@ export default function Sidebar({ user, activePage, onNavigate, onLogout, isOpen
       }`}>
         {/* Brand Logo */}
         <div className={`mb-6 flex items-center justify-center ${isCollapsed ? 'px-2' : 'px-6 gap-4'}`}>
-          <img src={logo} alt="Nexus Insure Logo" className={`${isCollapsed ? 'w-10 h-10' : 'w-14 h-14'} object-contain rounded-lg shrink-0`} />
+          <img src={logo} alt="Insurance Policy Records Management System Logo" className={`${isCollapsed ? 'w-10 h-10' : 'w-14 h-14'} object-contain rounded-lg shrink-0`} />
           {!isCollapsed && (
             <div className="truncate flex-1">
               <h1 className="text-base font-bold text-on-surface leading-tight tracking-wider font-['Outfit']">Lalwani</h1>

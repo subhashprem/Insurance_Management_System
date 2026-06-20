@@ -1,4 +1,4 @@
-# Insurance Records Management System
+# Insurance Policy Records Management System
 
 A modern, desktop-based Insurance Policy Management System (PMS) built with **Electron**, **React**, and **Vite**. Designed for insurance professionals to efficiently manage policies, proposals, team records, and business operations.
 
@@ -40,8 +40,8 @@ For detailed instructions on how to operate the software, manage credentials, re
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/Basit-Ali-Buriro/Insurance.git
-cd Insurance
+git clone https://github.com/subhashprem/Insurance_Management_System.git
+cd Insurance_Management_System
 ```
 
 ### 2. Install Dependencies
@@ -224,4 +224,4 @@ For bug reports and feature requests, please contact the development team.
 ---
 
 **Last Updated**: June 2026  
-**Repository**: [https://github.com/Basit-Ali-Buriro/Insurance](https://github.com/Basit-Ali-Buriro/Insurance)
+**Repository**: [https://github.com/subhashprem/Insurance_Management_System](https://github.com/subhashprem/Insurance_Management_System)

@@ -1,7 +1,7 @@
-# Nexus ERP — User Operations Guide
-## Insurance Policy & Records Management System
+# User Operations Guide
+## Insurance Policy Records Management System
 
-Welcome to the **Nexus ERP (Insurance Records Management System)**. This comprehensive operations guide provides step-by-step instructions on how to use, manage, and maintain the software.
+Welcome to the **Insurance Policy Records Management System**. This operations guide provides instructions on how to use, manage, and maintain the software.
 
 ---
 
@@ -20,7 +20,7 @@ Welcome to the **Nexus ERP (Insurance Records Management System)**. This compreh
 
 ## 1. System Introduction
 
-**Nexus ERP** is a secure, desktop-based ERP application designed to streamline the operations of insurance teams. It handles proposer directory records, policy lifecycle tracking, hierarchical sales performance, and automatic premium computations. 
+**Insurance Policy Records Management System** is a secure, desktop-based application designed to streamline the operations of insurance teams. It handles proposer records, policy lifecycle tracking, hierarchical sales performance, and automatic premium computations. 
 
 The software runs as a standalone desktop application on **Windows** and **macOS**, executing all calculations and storing data locally in an encrypted database for complete offline security.
 

@@ -1863,7 +1863,7 @@ function handleDatabaseReset() {
       log.info('Electron Builder packaging completed successfully.');
 
       // 4. Zip the output
-      const exePath = path.join(projectRoot, 'release', 'Insurance Records Management System Setup 1.0.1.exe');
+      const exePath = path.join(projectRoot, 'release', 'Insurance Policy Records Management System Setup 1.0.1.exe');
       const zipPath = path.join(projectRoot, 'Insurance_Setup_Exe.zip');
       if (fs.existsSync(exePath)) {
         const AdmZip = require('adm-zip');

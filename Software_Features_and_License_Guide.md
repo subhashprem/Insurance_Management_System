@@ -1,7 +1,7 @@
-# Insurance Records Management System (Nexus ERP)
+# Insurance Policy Records Management System
 ## Comprehensive Feature & License Operations Guide
 
-Welcome to the **Nexus ERP** (Insurance Records Management System). This guide provides a detailed overview of the system's core capabilities, administrative modules, data security practices, and its machine-bound licensing renewal mechanism.
+Welcome to the **Insurance Policy Records Management System**. This guide provides a detailed overview of the system's core capabilities, administrative modules, data security practices, and its machine-bound licensing renewal mechanism.
 
 ---
 
@@ -15,7 +15,7 @@ Welcome to the **Nexus ERP** (Insurance Records Management System). This guide p
 ---
 
 ## 1. Executive System Overview
-**Nexus ERP** is a standalone, secure desktop Enterprise Resource Planning (ERP) application designed specifically for insurance teams and agencies. It enables administrators to manage clients, track policy rosters, compute hierarchical sales performance, and handle operational commissions dynamically.
+**Insurance Policy Records Management System** is a standalone, secure desktop application designed specifically for insurance teams and agencies. It enables administrators to manage clients, track policy rosters, compute hierarchical sales performance, and handle operational commissions dynamically.
 
 Built with **Electron**, **React**, and an encrypted **SQLite** database, the application operates locally on the host machine. It combines a premium obsidian dark-mode interface with real-time analytics, automated date triggers, and secure database tools.
 
@@ -59,7 +59,7 @@ The system manages three layers of sales representatives in a clear hierarchical
 ---
 
 ## 3. Data Security: Backup & Restoration
-To ensure high data integrity and protection against hardware failures, Nexus ERP has a built-in backup utility:
+To ensure high data integrity and protection against hardware failures, the Insurance Policy Records Management System has a built-in backup utility:
 
 * **Creating a Backup**:
   - Compresses the SQLite database (`pms.db`) along with system state configs into a secure, timestamped ZIP archive.
@@ -72,12 +72,12 @@ To ensure high data integrity and protection against hardware failures, Nexus ER
 ---
 
 ## 4. Licensing & Activation System
-Nexus ERP features a state-of-the-art, machine-bound cryptographic license system that prevents unauthorized software redistribution.
+The Insurance Policy Records Management System features a state-of-the-art, machine-bound cryptographic license system that prevents unauthorized software redistribution.
 
 ```mermaid
 sequenceDiagram
     participant User as Client Machine
-    participant App as Nexus ERP
+    participant App as Insurance Policy Records Management System
     participant Dev as Lalwani Software Solutions
     
     Note over App: 1st Launch: Generates Machine ID<br/>Sets 1-Year Trial Expiry

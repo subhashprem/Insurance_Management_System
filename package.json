@@ -40,7 +40,7 @@
   "build": {
     "npmRebuild": false,
     "appId": "com.insurance.pms",
-    "productName": "Insurance Records Management System",
+    "productName": "Insurance Policy Records Management System",
     "copyright": "© 2026 Lalwani Software Solutions.",
     "icon": "assets/icon.ico",
     "directories": {
