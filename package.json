@@ -1,0 +1,68 @@
+{
+  "name": "insurance-records-management-system",
+  "version": "1.0.1",
+  "description": "Insurance Policy Records Management System - Standalone Desktop ERP",
+  "author": "Lalwani Software Solutions",
+  "main": "main/main.js",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "build": "vite build",
+    "postinstall": "electron-rebuild -f -w better-sqlite3,bcrypt",
+    "package": "node copy-db-to-project.js && npm run build && electron-builder"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.17",
+    "archiver": "^7.0.1",
+    "bcrypt": "^5.1.1",
+    "better-sqlite3": "^11.8.0",
+    "exceljs": "^4.4.0",
+    "lucide-react": "^0.475.0",
+    "node-machine-id": "^1.1.12",
+    "nodemailer": "^6.10.0",
+    "pdfkit": "^0.16.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^2.15.1",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.7.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
+    "electron": "^34.0.2",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.1.0",
+    "wait-on": "^8.0.2"
+  },
+  "build": {
+    "npmRebuild": false,
+    "appId": "com.insurance.pms",
+    "productName": "Insurance Records Management System",
+    "copyright": "© 2026 Lalwani Software Solutions.",
+    "icon": "assets/icon.ico",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "main/**/*",
+      "package.json",
+      "sysconfig.dat"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "requireAdministrator"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": true
+    }
+  }
+}
