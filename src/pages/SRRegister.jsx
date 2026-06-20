@@ -25,7 +25,8 @@ const EMPTY = {
   registration_no: '',
   registration_date: '',
   passport_pic: '',
-  total_business: 0.0
+  total_business: 0.0,
+  dob: ''
 };
 
 const toDisplayDate = (dbDate) => {
@@ -87,18 +88,18 @@ function FileAttachmentInput({ label, value, fieldName, code, onChange }) {
 
   return (
     <div 
-      className="border border-dashed border-border-subtle rounded-lg p-3 bg-surface-deep/50 hover:bg-surface-deep/80 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-colors group relative h-24"
+      className="border border-dashed border-border-subtle rounded-lg p-3 bg-surface-deep/50 hover:bg-surface-deep/80 flex flex-col items-center justify-center cursor-pointer transition-colors group relative h-24 w-full"
       onClick={handleUpload}
     >
       {uploading ? (
         <span className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
       ) : value ? (
-        <div className="text-center w-full px-2">
-          <span className="material-symbols-outlined text-success text-[24px] mb-1">description</span>
-          <p className="text-[11px] font-semibold text-on-surface truncate" title={value}>{fileName}</p>
+        <div className="text-center w-full px-1 flex flex-col items-center justify-center h-full">
+          <span className="material-symbols-outlined text-success text-[20px] leading-none mb-1">description</span>
+          <p className="text-[10px] font-bold text-on-surface truncate w-full" title={value}>{fileName}</p>
           <button 
             type="button"
-            className="text-[10px] text-error hover:underline mt-1 block mx-auto z-10"
+            className="text-[10px] text-error hover:underline mt-1 block mx-auto z-10 leading-none"
             onClick={(e) => {
               e.stopPropagation();
               onChange('');
@@ -108,11 +109,11 @@ function FileAttachmentInput({ label, value, fieldName, code, onChange }) {
           </button>
         </div>
       ) : (
-        <>
-          <span className="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[24px]">cloud_upload</span>
-          <span className="text-body-md font-semibold text-on-surface-variant text-[12px]">{label}</span>
-          <span className="text-[9px] text-outline">Click to attach</span>
-        </>
+        <div className="flex flex-col items-center justify-between h-full py-0.5 text-center w-full">
+          <span className="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px] leading-none">cloud_upload</span>
+          <span className="text-on-surface-variant text-[10px] font-bold leading-tight select-none px-0.5 block h-[38px] flex items-center justify-center text-center">{label}</span>
+          <span className="text-[9px] text-outline select-none leading-none">Click to attach</span>
+        </div>
       )}
     </div>
   );
@@ -173,10 +174,19 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
     if (!d.sr_code.trim()) e.sr_code = 'Required';
     if (!d.sr_name.trim()) e.sr_name = 'Required';
     if (!d.cnic.trim()) e.cnic = 'Required';
+    if (!d.sm_id) e.sm_id = 'Required';
+    if (!d.ssm_id) e.ssm_id = 'Required';
+    if (!d.am_id) e.am_id = 'Required';
     if (d.registration_date) {
       const dbDate = toDbDate(d.registration_date);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dbDate) || isNaN(Date.parse(dbDate))) {
         e.registration_date = 'Invalid date (use DD/MM/YYYY)';
+      }
+    }
+    if (d.dob) {
+      const dbDate = toDbDate(d.dob);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dbDate) || isNaN(Date.parse(dbDate))) {
+        e.dob = 'Invalid date (use DD/MM/YYYY)';
       }
     }
     return e;
@@ -185,6 +195,35 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
   const set = (k, v) => { 
     setModal(m => ({ ...m, data: { ...m.data, [k]: v } })); 
     setErrors(e => ({ ...e, [k]: undefined })); 
+  };
+
+  const handleSMChange = (smId) => {
+    setModal(m => {
+      const updatedData = { ...m.data, sm_id: smId };
+      if (smId) {
+        const selectedSM = sms.find(s => s.id === smId);
+        if (selectedSM) {
+          updatedData.ssm_id = selectedSM.ssm_id || null;
+          updatedData.am_id = selectedSM.am_id || null;
+        }
+      }
+      return { ...m, data: updatedData };
+    });
+    setErrors(e => ({ ...e, sm_id: undefined, ssm_id: undefined, am_id: undefined }));
+  };
+
+  const handleSSMChange = (ssmId) => {
+    setModal(m => {
+      const updatedData = { ...m.data, ssm_id: ssmId };
+      if (ssmId) {
+        const selectedSSM = ssms.find(s => s.id === ssmId);
+        if (selectedSSM) {
+          updatedData.am_id = selectedSSM.am_id || null;
+        }
+      }
+      return { ...m, data: updatedData };
+    });
+    setErrors(e => ({ ...e, ssm_id: undefined, am_id: undefined }));
   };
 
   const handleSave = async () => {
@@ -207,7 +246,8 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
     setSaving(true);
     const payload = {
       ...modal.data,
-      registration_date: toDbDate(modal.data.registration_date)
+      registration_date: toDbDate(modal.data.registration_date),
+      dob: toDbDate(modal.data.dob)
     };
     try {
       const res = modal.mode === 'create' ? await api.createSR(payload) : await api.updateSR(payload);
@@ -261,6 +301,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
     { key: 'sr_name', label: 'Name' },
     { key: 'relation', label: 'Son/Daughter/Wife of' },
     { key: 'cnic', label: 'CNIC', render: v => <span className="font-mono-data">{v}</span> },
+    { key: 'dob', label: 'Date of Birth', render: v => formatDate(v) },
     { key: 'contact_1', label: 'Contact 1', render: v => <span className="font-mono-data">{v || '—'}</span> },
     { key: 'contact_2', label: 'Contact 2', render: v => <span className="font-mono-data">{v || '—'}</span> },
     { key: 'address', label: 'Address' },
@@ -349,6 +390,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
               onClick={() => {
                 const editData = { ...row };
                 editData.registration_date = toDisplayDate(editData.registration_date);
+                editData.dob = toDisplayDate(editData.dob);
                 setModal({ open: true, mode: 'edit', data: editData });
               }}
               title="Edit SR"
@@ -394,7 +436,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
               <label className="form-label required">SR Code</label>
               <input 
                 autoFocus
-                className={`bg-surface-deep border border-border-subtle text-on-surface rounded p-2 focus:ring-2 focus:ring-primary focus:outline-none w-full ${errors.sr_code ? 'border-error' : ''}`}
+                className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.sr_code ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.sr_code || ''} 
                 onChange={e => set('sr_code', e.target.value)} 
               />
@@ -404,7 +446,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
             <div className="form-group">
               <label className="form-label required">SR Name</label>
               <input 
-                className={`bg-surface-deep border border-border-subtle text-on-surface rounded p-2 focus:ring-2 focus:ring-primary focus:outline-none w-full ${errors.sr_name ? 'border-error' : ''}`}
+                className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.sr_name ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.sr_name || ''} 
                 onChange={e => set('sr_name', e.target.value)} 
               />
@@ -414,7 +456,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
             <div className="form-group">
               <label className="form-label">Son/Daughter/Wife of</label>
               <input 
-                className="bg-surface-deep border border-border-subtle text-on-surface rounded p-2 focus:ring-2 focus:ring-primary focus:outline-none w-full"
+                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
                 value={modal.data.relation || ''} 
                 onChange={e => set('relation', e.target.value)} 
               />
@@ -423,7 +465,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
             <div className="form-group">
               <label className="form-label required">CNIC</label>
               <input 
-                className={`bg-surface-deep border border-border-subtle text-on-surface rounded p-2 focus:ring-2 focus:ring-primary focus:outline-none w-full ${errors.cnic ? 'border-error' : ''}`}
+                className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.cnic ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.cnic || ''} 
                 placeholder="35201-XXXXXXX-X"
                 onChange={e => set('cnic', e.target.value)} 
@@ -434,7 +476,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
             <div className="form-group">
               <label className="form-label">Contact 1</label>
               <input 
-                className="bg-surface-deep border border-border-subtle text-on-surface rounded p-2 focus:ring-2 focus:ring-primary focus:outline-none w-full"
+                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
                 value={modal.data.contact_1 || ''} 
                 onChange={e => set('contact_1', e.target.value)} 
               />
@@ -443,7 +485,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
             <div className="form-group">
               <label className="form-label">Contact 2</label>
               <input 
-                className="bg-surface-deep border border-border-subtle text-on-surface rounded p-2 focus:ring-2 focus:ring-primary focus:outline-none w-full"
+                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
                 value={modal.data.contact_2 || ''} 
                 onChange={e => set('contact_2', e.target.value)} 
               />
@@ -452,7 +494,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
             <div className="form-group">
               <label className="form-label">Registration No</label>
               <input 
-                className="bg-surface-deep border border-border-subtle text-on-surface rounded p-2 focus:ring-2 focus:ring-primary focus:outline-none w-full"
+                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
                 value={modal.data.registration_no || ''} 
                 onChange={e => set('registration_no', e.target.value)} 
               />
@@ -461,7 +503,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
             <div className="form-group">
               <label className="form-label">Status</label>
               <select 
-                className="bg-surface-deep border border-border-subtle text-on-surface rounded p-2 focus:ring-2 focus:ring-primary focus:outline-none w-full cursor-pointer"
+                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none cursor-pointer transition-all font-body-md text-sm"
                 value={modal.data.status} 
                 onChange={e => set('status', e.target.value)}
               >
@@ -471,45 +513,92 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="form-group">
-              <label className="form-label">SM</label>
+              <label className="form-label required">SM</label>
               <div className="relative">
-                <SearchableDropdown id="sr-sm" options={smOpts} value={modal.data.sm_id} onChange={v => set('sm_id', v)} placeholder="Select SM…"/>
+                <SearchableDropdown id="sr-sm" options={smOpts} value={modal.data.sm_id} onChange={handleSMChange} placeholder="Select SM…"/>
               </div>
+              {errors.sm_id && <span className="text-error text-xs mt-1">{errors.sm_id}</span>}
             </div>
 
             <div className="form-group">
-              <label className="form-label">SSM</label>
+              <label className="form-label required">SSM</label>
               <div className="relative">
-                <SearchableDropdown id="sr-ssm" options={ssmOpts} value={modal.data.ssm_id} onChange={v => set('ssm_id', v)} placeholder="Select SSM…"/>
+                <SearchableDropdown id="sr-ssm" options={ssmOpts} value={modal.data.ssm_id} onChange={handleSSMChange} placeholder="Select SSM…"/>
               </div>
+              {errors.ssm_id && <span className="text-error text-xs mt-1">{errors.ssm_id}</span>}
             </div>
 
             <div className="form-group">
-              <label className="form-label">Area Manager</label>
+              <label className="form-label required">Area Manager</label>
               <div className="relative">
                 <SearchableDropdown id="sr-am" options={amOpts} value={modal.data.am_id} onChange={v => set('am_id', v)} placeholder="Select AM…"/>
               </div>
+              {errors.am_id && <span className="text-error text-xs mt-1">{errors.am_id}</span>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-group">
+              <label className="form-label">Registration Date</label>
+              <div className="relative">
+                <input 
+                  type="text"
+                  placeholder="DD/MM/YYYY"
+                  className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 pr-10 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.registration_date ? 'border-error focus:border-error' : ''}`}
+                  value={modal.data.registration_date || ''} 
+                  onChange={e => set('registration_date', formatDateInput(e.target.value))} 
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer flex items-center justify-center w-6 h-6 z-10">
+                  <span className="material-symbols-outlined text-outline text-[18px] pointer-events-none">calendar_month</span>
+                  <input 
+                    type="date"
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    value={toDbDate(modal.data.registration_date) || ''}
+                    onChange={e => {
+                      if (e.target.value) {
+                        set('registration_date', toDisplayDate(e.target.value));
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+              {errors.registration_date && <span className="text-error text-xs mt-1">{errors.registration_date}</span>}
             </div>
 
             <div className="form-group">
-              <label className="form-label">Registration Date</label>
-              <input 
-                type="text"
-                placeholder="DD/MM/YYYY"
-                className={`bg-surface-deep border border-border-subtle text-on-surface rounded p-2 focus:ring-2 focus:ring-primary focus:outline-none w-full ${errors.registration_date ? 'border-error' : ''}`}
-                value={modal.data.registration_date || ''} 
-                onChange={e => set('registration_date', formatDateInput(e.target.value))} 
-              />
-              {errors.registration_date && <span className="text-error text-xs mt-1">{errors.registration_date}</span>}
+              <label className="form-label">Date of Birth</label>
+              <div className="relative">
+                <input 
+                  type="text"
+                  placeholder="DD/MM/YYYY"
+                  className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 pr-10 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.dob ? 'border-error focus:border-error' : ''}`}
+                  value={modal.data.dob || ''} 
+                  onChange={e => set('dob', formatDateInput(e.target.value))} 
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer flex items-center justify-center w-6 h-6 z-10">
+                  <span className="material-symbols-outlined text-outline text-[18px] pointer-events-none">calendar_month</span>
+                  <input 
+                    type="date"
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    value={toDbDate(modal.data.dob) || ''}
+                    onChange={e => {
+                      if (e.target.value) {
+                        set('dob', toDisplayDate(e.target.value));
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+              {errors.dob && <span className="text-error text-xs mt-1">{errors.dob}</span>}
             </div>
           </div>
 
           <div className="form-group">
             <label className="form-label">Address</label>
             <textarea 
-              className="bg-surface-deep border border-border-subtle text-on-surface rounded p-2 focus:ring-2 focus:ring-primary focus:outline-none w-full"
+              className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm resize-none"
               value={modal.data.address || ''} 
               onChange={e => set('address', e.target.value)} 
               rows={2}

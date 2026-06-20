@@ -182,8 +182,8 @@ function handleAreaManagers() {
   ipcMain.handle('am:create', (_e, data) => {
     const db = getDb();
     try {
-      db.prepare('INSERT INTO Area_Managers (am_code,am_name,address,cnic,contact_1,contact_2,status,relation,registration_no,registration_date) VALUES (?,?,?,?,?,?,?,?,?,?)')
-        .run(data.am_code, encrypt(data.am_name), encrypt(data.address), encrypt(data.cnic), encrypt(data.contact_1), encrypt(data.contact_2), data.status || 'active', encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null);
+      db.prepare('INSERT INTO Area_Managers (am_code,am_name,address,cnic,contact_1,contact_2,status,relation,registration_no,registration_date,dob) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+        .run(data.am_code, encrypt(data.am_name), encrypt(data.address), encrypt(data.cnic), encrypt(data.contact_1), encrypt(data.contact_2), data.status || 'active', encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.dob || null);
       log().info(`AM created: ${data.am_code}`);
       return { ok: true };
     } catch (err) { return { ok: false, error: err.message }; }
@@ -192,8 +192,8 @@ function handleAreaManagers() {
   ipcMain.handle('am:update', (_e, data) => {
     const db = getDb();
     try {
-      db.prepare('UPDATE Area_Managers SET am_code=?,am_name=?,address=?,cnic=?,contact_1=?,contact_2=?,status=?,relation=?,registration_no=?,registration_date=? WHERE id=?')
-        .run(data.am_code, encrypt(data.am_name), encrypt(data.address), encrypt(data.cnic), encrypt(data.contact_1), encrypt(data.contact_2), data.status, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.id);
+      db.prepare('UPDATE Area_Managers SET am_code=?,am_name=?,address=?,cnic=?,contact_1=?,contact_2=?,status=?,relation=?,registration_no=?,registration_date=?,dob=? WHERE id=?')
+        .run(data.am_code, encrypt(data.am_name), encrypt(data.address), encrypt(data.cnic), encrypt(data.contact_1), encrypt(data.contact_2), data.status, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.dob || null, data.id);
       return { ok: true };
     } catch (err) { return { ok: false, error: err.message }; }
   });
@@ -234,10 +234,10 @@ function handleSSM() {
   ipcMain.handle('ssm:create', (_e, data) => {
     const db = getDb();
     try {
-      db.prepare(`INSERT INTO SSM (ssm_code,ssm_name,address,cnic,contact_1,contact_2,am_id,status,cnic_pic,nominee_cnic_pic,matric_cert,intermediate_cert,degree_cert,relation,registration_no,registration_date,passport_pic)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      db.prepare(`INSERT INTO SSM (ssm_code,ssm_name,address,cnic,contact_1,contact_2,am_id,status,cnic_pic,nominee_cnic_pic,matric_cert,intermediate_cert,degree_cert,relation,registration_no,registration_date,passport_pic,dob)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
         .run(data.ssm_code, encrypt(data.ssm_name), encrypt(data.address), encrypt(data.cnic), encrypt(data.contact_1), encrypt(data.contact_2), data.am_id || null, data.status || 'active',
-          data.cnic_pic || null, data.nominee_cnic_pic || null, data.matric_cert || null, data.intermediate_cert || null, data.degree_cert || null, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.passport_pic || null);
+          data.cnic_pic || null, data.nominee_cnic_pic || null, data.matric_cert || null, data.intermediate_cert || null, data.degree_cert || null, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.passport_pic || null, data.dob || null);
       log().info(`SSM created: ${data.ssm_code}`);
       return { ok: true };
     } catch (err) { return { ok: false, error: err.message }; }
@@ -247,9 +247,9 @@ function handleSSM() {
     const db = getDb();
     try {
       db.prepare(`UPDATE SSM SET ssm_code=?,ssm_name=?,address=?,cnic=?,contact_1=?,contact_2=?,am_id=?,status=?,
-        cnic_pic=?,nominee_cnic_pic=?,matric_cert=?,intermediate_cert=?,degree_cert=?,relation=?,registration_no=?,registration_date=?,passport_pic=? WHERE id=?`)
+        cnic_pic=?,nominee_cnic_pic=?,matric_cert=?,intermediate_cert=?,degree_cert=?,relation=?,registration_no=?,registration_date=?,passport_pic=?,dob=? WHERE id=?`)
         .run(data.ssm_code, encrypt(data.ssm_name), encrypt(data.address), encrypt(data.cnic), encrypt(data.contact_1), encrypt(data.contact_2), data.am_id || null, data.status,
-          data.cnic_pic || null, data.nominee_cnic_pic || null, data.matric_cert || null, data.intermediate_cert || null, data.degree_cert || null, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.passport_pic || null, data.id);
+          data.cnic_pic || null, data.nominee_cnic_pic || null, data.matric_cert || null, data.intermediate_cert || null, data.degree_cert || null, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.passport_pic || null, data.dob || null, data.id);
       return { ok: true };
     } catch (err) { return { ok: false, error: err.message }; }
   });
@@ -291,10 +291,10 @@ function handleSM() {
   ipcMain.handle('sm:create', (_e, data) => {
     const db = getDb();
     try {
-      db.prepare(`INSERT INTO SM (sm_code,sm_name,address,cnic,contact_1,contact_2,ssm_id,am_id,status,cnic_pic,nominee_cnic_pic,matric_cert,intermediate_cert,degree_cert,relation,registration_no,registration_date,passport_pic)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      db.prepare(`INSERT INTO SM (sm_code,sm_name,address,cnic,contact_1,contact_2,ssm_id,am_id,status,cnic_pic,nominee_cnic_pic,matric_cert,intermediate_cert,degree_cert,relation,registration_no,registration_date,passport_pic,dob)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
         .run(data.sm_code, encrypt(data.sm_name), encrypt(data.address), encrypt(data.cnic), encrypt(data.contact_1), encrypt(data.contact_2), data.ssm_id || null, data.am_id || null, data.status || 'active',
-          data.cnic_pic || null, data.nominee_cnic_pic || null, data.matric_cert || null, data.intermediate_cert || null, data.degree_cert || null, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.passport_pic || null);
+          data.cnic_pic || null, data.nominee_cnic_pic || null, data.matric_cert || null, data.intermediate_cert || null, data.degree_cert || null, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.passport_pic || null, data.dob || null);
       log().info(`SM created: ${data.sm_code}`);
       return { ok: true };
     } catch (err) { return { ok: false, error: err.message }; }
@@ -304,9 +304,9 @@ function handleSM() {
     const db = getDb();
     try {
       db.prepare(`UPDATE SM SET sm_code=?,sm_name=?,address=?,cnic=?,contact_1=?,contact_2=?,ssm_id=?,am_id=?,status=?,
-        cnic_pic=?,nominee_cnic_pic=?,matric_cert=?,intermediate_cert=?,degree_cert=?,relation=?,registration_no=?,registration_date=?,passport_pic=? WHERE id=?`)
+        cnic_pic=?,nominee_cnic_pic=?,matric_cert=?,intermediate_cert=?,degree_cert=?,relation=?,registration_no=?,registration_date=?,passport_pic=?,dob=? WHERE id=?`)
         .run(data.sm_code, encrypt(data.sm_name), encrypt(data.address), encrypt(data.cnic), encrypt(data.contact_1), encrypt(data.contact_2), data.ssm_id || null, data.am_id || null, data.status,
-          data.cnic_pic || null, data.nominee_cnic_pic || null, data.matric_cert || null, data.intermediate_cert || null, data.degree_cert || null, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.passport_pic || null, data.id);
+          data.cnic_pic || null, data.nominee_cnic_pic || null, data.matric_cert || null, data.intermediate_cert || null, data.degree_cert || null, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.passport_pic || null, data.dob || null, data.id);
       return { ok: true };
     } catch (err) { return { ok: false, error: err.message }; }
   });
@@ -346,10 +346,10 @@ function handleSR() {
   ipcMain.handle('sr:create', (_e, data) => {
     const db = getDb();
     try {
-      db.prepare(`INSERT INTO SR (sr_code,sr_name,address,cnic,contact_1,contact_2,sm_id,ssm_id,am_id,status,cnic_pic,nominee_cnic_pic,matric_cert,intermediate_cert,degree_cert,relation,registration_no,registration_date,passport_pic,total_business)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      db.prepare(`INSERT INTO SR (sr_code,sr_name,address,cnic,contact_1,contact_2,sm_id,ssm_id,am_id,status,cnic_pic,nominee_cnic_pic,matric_cert,intermediate_cert,degree_cert,relation,registration_no,registration_date,passport_pic,total_business,dob)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
         .run(data.sr_code, encrypt(data.sr_name), encrypt(data.address), encrypt(data.cnic), encrypt(data.contact_1), encrypt(data.contact_2), data.sm_id || null, data.ssm_id || null, data.am_id || null, data.status || 'active',
-          data.cnic_pic || null, data.nominee_cnic_pic || null, data.matric_cert || null, data.intermediate_cert || null, data.degree_cert || null, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.passport_pic || null, data.total_business || 0.0);
+          data.cnic_pic || null, data.nominee_cnic_pic || null, data.matric_cert || null, data.intermediate_cert || null, data.degree_cert || null, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.passport_pic || null, data.total_business || 0.0, data.dob || null);
       log().info(`SR created: ${data.sr_code}`);
       return { ok: true };
     } catch (err) { return { ok: false, error: err.message }; }
@@ -359,9 +359,9 @@ function handleSR() {
     const db = getDb();
     try {
       db.prepare(`UPDATE SR SET sr_code=?,sr_name=?,address=?,cnic=?,contact_1=?,contact_2=?,sm_id=?,ssm_id=?,am_id=?,status=?,
-        cnic_pic=?,nominee_cnic_pic=?,matric_cert=?,intermediate_cert=?,degree_cert=?,relation=?,registration_no=?,registration_date=?,passport_pic=?,total_business=? WHERE id=?`)
+        cnic_pic=?,nominee_cnic_pic=?,matric_cert=?,intermediate_cert=?,degree_cert=?,relation=?,registration_no=?,registration_date=?,passport_pic=?,total_business=?,dob=? WHERE id=?`)
         .run(data.sr_code, encrypt(data.sr_name), encrypt(data.address), encrypt(data.cnic), encrypt(data.contact_1), encrypt(data.contact_2), data.sm_id || null, data.ssm_id || null, data.am_id || null, data.status,
-          data.cnic_pic || null, data.nominee_cnic_pic || null, data.matric_cert || null, data.intermediate_cert || null, data.degree_cert || null, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.passport_pic || null, data.total_business || 0.0, data.id);
+          data.cnic_pic || null, data.nominee_cnic_pic || null, data.matric_cert || null, data.intermediate_cert || null, data.degree_cert || null, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.passport_pic || null, data.total_business || 0.0, data.dob || null, data.id);
       return { ok: true };
     } catch (err) { return { ok: false, error: err.message }; }
   });
@@ -544,11 +544,11 @@ function handlePolicy() {
   ipcMain.handle('policy:create', (_e, data) => {
     const db = getDb();
     try {
-      db.prepare(`INSERT INTO Policy_Register (policy_no,holder_name,cnic,address,contact_1,contact_2,premium,issue_date,due_date,table_term,last_paid_date,sr_id,sm_id,ssm_id,proposal_id,relation)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      db.prepare(`INSERT INTO Policy_Register (policy_no,holder_name,cnic,address,contact_1,contact_2,premium,issue_date,due_date,table_term,last_paid_date,sr_id,sm_id,ssm_id,proposal_id,relation,dob)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
         .run(encrypt(data.policy_no), encrypt(data.holder_name), encrypt(data.cnic), encrypt(data.address), encrypt(data.contact_1), encrypt(data.contact_2),
           data.premium, data.issue_date, data.due_date, data.table_term, data.last_paid_date,
-          data.sr_id || null, data.sm_id || null, data.ssm_id || null, data.proposal_id || null, encrypt(data.relation || ''));
+          data.sr_id || null, data.sm_id || null, data.ssm_id || null, data.proposal_id || null, encrypt(data.relation || ''), data.dob || null);
       if (data.sr_id) updateSrTotalBusiness(db, data.sr_id);
       log().info(`Policy created: ${data.policy_no}`);
       return { ok: true };
@@ -559,10 +559,10 @@ function handlePolicy() {
     const db  = getDb();
     const old = db.prepare('SELECT last_paid_date, sr_id, sm_id, ssm_id, premium FROM Policy_Register WHERE id=?').get(data.id);
     try {
-      db.prepare(`UPDATE Policy_Register SET policy_no=?,holder_name=?,cnic=?,address=?,contact_1=?,contact_2=?,premium=?,issue_date=?,due_date=?,table_term=?,last_paid_date=?,previous_paid_date=?,sr_id=?,sm_id=?,ssm_id=?,relation=? WHERE id=?`)
+      db.prepare(`UPDATE Policy_Register SET policy_no=?,holder_name=?,cnic=?,address=?,contact_1=?,contact_2=?,premium=?,issue_date=?,due_date=?,table_term=?,last_paid_date=?,previous_paid_date=?,sr_id=?,sm_id=?,ssm_id=?,relation=?,dob=? WHERE id=?`)
         .run(encrypt(data.policy_no), encrypt(data.holder_name), encrypt(data.cnic), encrypt(data.address), encrypt(data.contact_1), encrypt(data.contact_2),
           data.premium, data.issue_date, data.due_date, data.table_term, data.last_paid_date, old?.last_paid_date || null,
-          data.sr_id || null, data.sm_id || null, data.ssm_id || null, encrypt(data.relation || ''), data.id);
+          data.sr_id || null, data.sm_id || null, data.ssm_id || null, encrypt(data.relation || ''), data.dob || null, data.id);
 
       if (data.sr_id) updateSrTotalBusiness(db, data.sr_id);
       if (old && old.sr_id && old.sr_id !== data.sr_id) updateSrTotalBusiness(db, old.sr_id);
@@ -591,51 +591,201 @@ function handlePolicy() {
 }
 
 /* ──────────────────────────── NOTIFICATIONS ──────────────────────────── */
+function formatLocalDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getDaysUntilBirthday(dobStr, todayStr) {
+  if (!dobStr) return null;
+  const dobParts = dobStr.split('-');
+  if (dobParts.length !== 3) return null;
+  const birthMonth = parseInt(dobParts[1], 10) - 1;
+  const birthDay = parseInt(dobParts[2], 10);
+
+  const todayParts = todayStr.split('-');
+  if (todayParts.length !== 3) return null;
+  const todayYear = parseInt(todayParts[0], 10);
+  const todayMonth = parseInt(todayParts[1], 10) - 1;
+  const todayDay = parseInt(todayParts[2], 10);
+  const todayMidnight = new Date(todayYear, todayMonth, todayDay);
+
+  let nextBday = new Date(todayYear, birthMonth, birthDay);
+
+  if (nextBday < todayMidnight) {
+    nextBday = new Date(todayYear + 1, birthMonth, birthDay);
+  }
+
+  const diffTime = nextBday.getTime() - todayMidnight.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return {
+    days_left: diffDays,
+    next_birthday: formatLocalDate(nextBday)
+  };
+}
+
+function getCombinedNotifications() {
+  const db = getDb();
+  const today = formatLocalDate(new Date());
+  const todayObj = new Date(today);
+  const currentYear = todayObj.getFullYear();
+
+  // 1. Query policies due for payment
+  const paymentRows = db.prepare(`SELECT p.id, p.policy_no, p.holder_name, p.contact_1, p.due_date, p.premium,
+      sr.sr_code, sr.sr_name, COALESCE(n.whatsapp_sent, 0) as whatsapp_sent, n.whatsapp_sent_at,
+      julianday(p.due_date) - julianday(?) as days_left
+    FROM Policy_Register p
+    LEFT JOIN Notifications n ON n.policy_id=p.id
+    LEFT JOIN SR sr ON p.sr_id=sr.id
+    WHERE p.due_date <= date(?,'+30 days')
+      AND (p.last_paid_date IS NULL OR p.last_paid_date < p.due_date)
+    ORDER BY days_left ASC`).all(today, today);
+
+  const paymentNotifs = paymentRows.map(r => {
+    const dec = decryptRow(r, ['holder_name', 'contact_1', 'policy_no', 'sr_name']);
+    return {
+      id: dec.id,
+      type: 'payment',
+      policy_no: dec.policy_no,
+      holder_name: dec.holder_name,
+      contact_1: dec.contact_1,
+      due_date: dec.due_date,
+      premium: dec.premium,
+      sr_code: dec.sr_code,
+      sr_name: dec.sr_name,
+      whatsapp_sent: dec.whatsapp_sent,
+      whatsapp_sent_at: dec.whatsapp_sent_at,
+      days_left: dec.days_left,
+    };
+  });
+
+  const birthdayNotifs = [];
+
+  // Helper to retrieve and parse birthdays
+  const processTableBirthdays = (tableName, codeField, nameField, roleName, idPrefix) => {
+    const rows = db.prepare(`SELECT id, ${codeField} as code, ${nameField} as name, contact_1, dob FROM ${tableName} WHERE dob IS NOT NULL AND dob != ''`).all();
+    for (const r of rows) {
+      const dec = decryptRow(r, ['name', 'contact_1']);
+      const bdayInfo = getDaysUntilBirthday(dec.dob, today);
+      if (bdayInfo && bdayInfo.days_left >= 0 && bdayInfo.days_left <= 30) {
+        const bdayId = `${idPrefix}_${dec.id}_${currentYear}`;
+        const sentRow = db.prepare('SELECT value FROM Config WHERE key = ?').get(`bday_sent_${bdayId}`);
+        birthdayNotifs.push({
+          id: bdayId,
+          type: 'birthday',
+          role: roleName,
+          name: dec.name,
+          contact_1: dec.contact_1,
+          dob: dec.dob,
+          next_birthday: bdayInfo.next_birthday,
+          code: dec.code,
+          days_left: bdayInfo.days_left,
+          whatsapp_sent: sentRow ? 1 : 0,
+          whatsapp_sent_at: sentRow ? sentRow.value : null,
+        });
+      }
+    }
+  };
+
+  // Process Policy Register for Policy Holders
+  const policyRows = db.prepare("SELECT id, policy_no as code, holder_name as name, contact_1, dob FROM Policy_Register WHERE dob IS NOT NULL AND dob != ''").all();
+  for (const r of policyRows) {
+    const dec = decryptRow(r, ['name', 'contact_1', 'code']);
+    const bdayInfo = getDaysUntilBirthday(dec.dob, today);
+    if (bdayInfo && bdayInfo.days_left >= 0 && bdayInfo.days_left <= 30) {
+      const bdayId = `b_policyholder_${dec.id}_${currentYear}`;
+      const sentRow = db.prepare('SELECT value FROM Config WHERE key = ?').get(`bday_sent_${bdayId}`);
+      birthdayNotifs.push({
+        id: bdayId,
+        type: 'birthday',
+        role: 'Policy Holder',
+        name: dec.name,
+        contact_1: dec.contact_1,
+        dob: dec.dob,
+        next_birthday: bdayInfo.next_birthday,
+        policy_no: dec.code,
+        days_left: bdayInfo.days_left,
+        whatsapp_sent: sentRow ? 1 : 0,
+        whatsapp_sent_at: sentRow ? sentRow.value : null,
+      });
+    }
+  }
+
+  // Process SR, SM, SSM, Area_Managers
+  processTableBirthdays('SR', 'sr_code', 'sr_name', 'Sales Representative', 'b_sr');
+  processTableBirthdays('SM', 'sm_code', 'sm_name', 'Sales Manager', 'b_sm');
+  processTableBirthdays('SSM', 'ssm_code', 'ssm_name', 'Senior Sales Manager', 'b_ssm');
+  processTableBirthdays('Area_Managers', 'am_code', 'am_name', 'Area Manager', 'b_am');
+
+  const combined = [...paymentNotifs, ...birthdayNotifs];
+  combined.sort((a, b) => a.days_left - b.days_left);
+  return combined;
+}
+
 function handleNotifications() {
   ipcMain.handle('notifications:list', () => {
-    const db   = getDb();
-    const today = new Date().toISOString().split('T')[0];
-    const rows  = db.prepare(`SELECT p.id, p.policy_no, p.holder_name, p.contact_1, p.due_date, p.premium,
-        sr.sr_code, sr.sr_name, COALESCE(n.whatsapp_sent, 0) as whatsapp_sent, n.whatsapp_sent_at,
-        julianday(p.due_date) - julianday(?) as days_left
-      FROM Policy_Register p
-      LEFT JOIN Notifications n ON n.policy_id=p.id
-      LEFT JOIN SR sr ON p.sr_id=sr.id
-      WHERE p.due_date <= date(?,'+30 days')
-        AND (p.last_paid_date IS NULL OR p.last_paid_date < p.due_date)
-      ORDER BY days_left ASC`).all(today, today);
-    return rows.map(r => decryptRow(r, ['holder_name', 'contact_1', 'policy_no', 'sr_name']));
+    try {
+      return getCombinedNotifications();
+    } catch (err) {
+      getLogger().error(`Failed in notifications:list: ${err.message}`);
+      return [];
+    }
   });
 
   ipcMain.handle('notifications:count', () => {
-    const db   = getDb();
-    const today = new Date().toISOString().split('T')[0];
-    const { c } = db.prepare(`SELECT COUNT(*) as c FROM Policy_Register p
-      WHERE p.due_date <= date(?,'+30 days')
-        AND (p.last_paid_date IS NULL OR p.last_paid_date < p.due_date)`).get(today);
-    return c;
+    try {
+      const list = getCombinedNotifications();
+      return list.length;
+    } catch (err) {
+      getLogger().error(`Failed in notifications:count: ${err.message}`);
+      return 0;
+    }
   });
 
-  ipcMain.handle('notifications:markWhatsapp', (_e, policyId) => {
+  ipcMain.handle('notifications:markWhatsapp', (_e, id) => {
     const now = new Date().toISOString();
     const db = getDb();
-    const row = db.prepare('SELECT id FROM Notifications WHERE policy_id=?').get(policyId);
-    if (row) {
-      db.prepare('UPDATE Notifications SET whatsapp_sent=1, whatsapp_sent_at=? WHERE policy_id=?').run(now, policyId);
-    } else {
-      db.prepare('INSERT INTO Notifications (policy_id, whatsapp_sent, whatsapp_sent_at, triggered_date) VALUES (?, 1, ?, ?)')
-        .run(policyId, now, new Date().toISOString().split('T')[0]);
+    try {
+      if (typeof id === 'string' && id.startsWith('b_')) {
+        db.prepare('INSERT OR REPLACE INTO Config (key, value) VALUES (?, ?)')
+          .run(`bday_sent_${id}`, now);
+      } else {
+        const policyId = id;
+        const row = db.prepare('SELECT id FROM Notifications WHERE policy_id=?').get(policyId);
+        if (row) {
+          db.prepare('UPDATE Notifications SET whatsapp_sent=1, whatsapp_sent_at=? WHERE policy_id=?').run(now, policyId);
+        } else {
+          db.prepare('INSERT INTO Notifications (policy_id, whatsapp_sent, whatsapp_sent_at, triggered_date) VALUES (?, 1, ?, ?)')
+            .run(policyId, now, new Date().toISOString().split('T')[0]);
+        }
+      }
+      return { ok: true };
+    } catch (err) {
+      getLogger().error(`Failed in notifications:markWhatsapp: ${err.message}`);
+      return { ok: false, error: err.message };
     }
-    return { ok: true };
   });
 
-  ipcMain.handle('notifications:openWhatsapp', (_e, { phone, name, policyNo, dueDate, premium }) => {
-    const formatted = Number(premium || 0).toLocaleString();
-    const msg = encodeURIComponent(`Assalam o Alaikum ${name}, your premium of Rs. ${formatted} for policy number ${policyNo} is due on ${dueDate}. Please make payment at your earliest. Thank you.`);
-    const clean = phone.replace(/\D/g, '');
-    const url   = `https://wa.me/${clean.startsWith('0') ? '92' + clean.slice(1) : clean}?text=${msg}`;
-    shell.openExternal(url);
-    return { ok: true };
+  ipcMain.handle('notifications:openWhatsapp', (_e, { phone, name, policyNo, dueDate, premium, type, adminName }) => {
+    try {
+      let msgStr = '';
+      if (type === 'birthday') {
+        msgStr = `Assalam o Alaikum ${name}, wishing you a very Happy Birthday! May you have a blessed and wonderful year ahead. Best regards ${adminName || 'Administrator'}.`;
+      } else {
+        const formatted = Number(premium || 0).toLocaleString();
+        msgStr = `Assalam o Alaikum ${name}, your premium of Rs. ${formatted} for policy number ${policyNo} is due on ${dueDate}. Please make payment at your earliest. Thank you.`;
+      }
+      const msg = encodeURIComponent(msgStr);
+      const clean = (phone || '').replace(/\D/g, '');
+      const url   = `https://wa.me/${clean.startsWith('0') ? '92' + clean.slice(1) : clean}?text=${msg}`;
+      shell.openExternal(url);
+      return { ok: true };
+    } catch (err) {
+      getLogger().error(`Failed in notifications:openWhatsapp: ${err.message}`);
+      return { ok: false, error: err.message };
+    }
   });
 }
 
@@ -1338,6 +1488,7 @@ function handleExcelGenerators() {
         { header: 'Name', key: 'holder_name', width: 25 },
         { header: 'Son/Daughter/Wife of', key: 'relation', width: 25 },
         { header: 'CNIC', key: 'cnic', width: 20 },
+        { header: 'Date of Birth', key: 'dob', width: 15 },
         { header: 'Address', key: 'address', width: 30 },
         { header: 'Contact 1', key: 'contact_1', width: 15 },
         { header: 'Contact 2', key: 'contact_2', width: 15 },
@@ -1359,6 +1510,7 @@ function handleExcelGenerators() {
           holder_name: r.holder_name,
           relation: r.relation || '',
           cnic: r.cnic,
+          dob: formatDbDate(r.dob),
           address: r.address || '',
           contact_1: r.contact_1 || '',
           contact_2: r.contact_2 || '',
@@ -1466,6 +1618,7 @@ function handleExcelGenerators() {
         { header: 'Name', key: 'sr_name', width: 25 },
         { header: 'Son/Daughter/Wife of', key: 'relation', width: 25 },
         { header: 'CNIC', key: 'cnic', width: 20 },
+        { header: 'Date of Birth', key: 'dob', width: 15 },
         { header: 'Contact 1', key: 'contact_1', width: 15 },
         { header: 'Contact 2', key: 'contact_2', width: 15 },
         { header: 'Address', key: 'address', width: 30 },
@@ -1488,6 +1641,7 @@ function handleExcelGenerators() {
           sr_name: r.sr_name || '',
           relation: r.relation || '',
           cnic: r.cnic || '',
+          dob: formatDbDate(r.dob),
           contact_1: r.contact_1 || '',
           contact_2: r.contact_2 || '',
           address: r.address || '',
@@ -1533,6 +1687,7 @@ function handleExcelGenerators() {
         { header: 'Name', key: 'sm_name', width: 25 },
         { header: 'Son/Daughter/Wife of', key: 'relation', width: 25 },
         { header: 'CNIC', key: 'cnic', width: 20 },
+        { header: 'Date of Birth', key: 'dob', width: 15 },
         { header: 'Contact 1', key: 'contact_1', width: 15 },
         { header: 'Contact 2', key: 'contact_2', width: 15 },
         { header: 'Address', key: 'address', width: 30 },
@@ -1554,6 +1709,7 @@ function handleExcelGenerators() {
           sm_name: r.sm_name || '',
           relation: r.relation || '',
           cnic: r.cnic || '',
+          dob: formatDbDate(r.dob),
           contact_1: r.contact_1 || '',
           contact_2: r.contact_2 || '',
           address: r.address || '',
@@ -1598,6 +1754,7 @@ function handleExcelGenerators() {
         { header: 'Name', key: 'ssm_name', width: 25 },
         { header: 'Son/Daughter/Wife of', key: 'relation', width: 25 },
         { header: 'CNIC', key: 'cnic', width: 20 },
+        { header: 'Date of Birth', key: 'dob', width: 15 },
         { header: 'Contact 1', key: 'contact_1', width: 15 },
         { header: 'Contact 2', key: 'contact_2', width: 15 },
         { header: 'Address', key: 'address', width: 30 },
@@ -1619,6 +1776,7 @@ function handleExcelGenerators() {
           ssm_name: r.ssm_name || '',
           relation: r.relation || '',
           cnic: r.cnic || '',
+          dob: formatDbDate(r.dob),
           contact_1: r.contact_1 || '',
           contact_2: r.contact_2 || '',
           address: r.address || '',
@@ -1663,6 +1821,7 @@ function handleExcelGenerators() {
         { header: 'Name', key: 'am_name', width: 25 },
         { header: 'Son/Daughter/Wife of', key: 'relation', width: 25 },
         { header: 'CNIC', key: 'cnic', width: 20 },
+        { header: 'Date of Birth', key: 'dob', width: 15 },
         { header: 'Contact 1', key: 'contact_1', width: 15 },
         { header: 'Contact 2', key: 'contact_2', width: 15 },
         { header: 'Address', key: 'address', width: 30 },
@@ -1684,6 +1843,7 @@ function handleExcelGenerators() {
           am_name: r.am_name || '',
           relation: r.relation || '',
           cnic: r.cnic || '',
+          dob: formatDbDate(r.dob),
           contact_1: r.contact_1 || '',
           contact_2: r.contact_2 || '',
           address: r.address || '',

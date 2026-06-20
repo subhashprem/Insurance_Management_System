@@ -348,8 +348,8 @@ p  { font-family: var(--font); color: var(--text-secondary); line-height: 1.6; }
 .btn-icon { padding: 7px; border-radius: var(--radius-sm); }
 
 /* ── Form elements ── */
-.form-group { display: flex; flex-direction: column; gap: 5px; }
-.form-label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.03em; }
+.form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 2px; }
+.form-label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.03em; margin-bottom: 4px; }
 .form-label.required::after { content: ' *'; color: var(--accent-red); }
 
 .form-input, .form-select, .form-textarea {

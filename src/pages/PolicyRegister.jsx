@@ -5,7 +5,7 @@ import SearchableDropdown from '../components/SearchableDropdown.jsx';
 import { useToast } from '../components/Toast.jsx';
 import api from '../lib/api.js';
 
-const EMPTY = { policy_no:'', holder_name:'', cnic:'', address:'', contact_1:'', contact_2:'', premium:'', issue_date:'', due_date:'', table_term:'', last_paid_date:'', sr_id:null, sm_id:null, ssm_id:null, relation:'' };
+const EMPTY = { policy_no:'', holder_name:'', cnic:'', address:'', contact_1:'', contact_2:'', premium:'', issue_date:'', due_date:'', table_term:'', last_paid_date:'', sr_id:null, sm_id:null, ssm_id:null, relation:'', dob:'' };
 
 const toDisplayDate = (dbDate) => {
   if (!dbDate) return '';
@@ -83,6 +83,7 @@ export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
         editData.issue_date = toDisplayDate(editData.issue_date);
         editData.due_date = toDisplayDate(editData.due_date);
         editData.last_paid_date = toDisplayDate(editData.last_paid_date);
+        editData.dob = toDisplayDate(editData.dob);
         setModal({ open: true, mode: 'edit', data: editData });
         
         // Remove query param from browser URL without reloading
@@ -144,6 +145,15 @@ export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
         e.last_paid_date = 'Invalid date (use DD/MM/YYYY)';
       }
     }
+    if (d.dob) {
+      const dbDate = toDbDate(d.dob);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dbDate) || isNaN(Date.parse(dbDate))) {
+        e.dob = 'Invalid date (use DD/MM/YYYY)';
+      }
+    }
+    if (!d.sr_id)  e.sr_id  = 'Required';
+    if (!d.sm_id)  e.sm_id  = 'Required';
+    if (!d.ssm_id) e.ssm_id = 'Required';
     return e;
   };
 
@@ -194,7 +204,8 @@ export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
       ...modal.data,
       issue_date: toDbDate(modal.data.issue_date),
       due_date: toDbDate(modal.data.due_date),
-      last_paid_date: toDbDate(modal.data.last_paid_date)
+      last_paid_date: toDbDate(modal.data.last_paid_date),
+      dob: toDbDate(modal.data.dob)
     };
     try {
       const res = modal.mode==='create' ? await api.createPolicy(payload) : await api.updatePolicy(payload);
@@ -225,6 +236,7 @@ export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
     { key:'holder_name',  label:'Name' },
     { key:'relation',     label:'Son/Daughter/Wife of' },
     { key:'cnic',         label:'CNIC' },
+    { key:'dob',          label:'Date of Birth', render: v => formatDate(v) },
     { key:'address',      label:'Address' },
     { key:'contact_1',    label:'Contact 1' },
     { key:'contact_2',    label:'Contact 2' },
@@ -285,6 +297,7 @@ export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
               editData.issue_date = toDisplayDate(editData.issue_date);
               editData.due_date = toDisplayDate(editData.due_date);
               editData.last_paid_date = toDisplayDate(editData.last_paid_date);
+              editData.dob = toDisplayDate(editData.dob);
               setModal({ open: true, mode: 'edit', data: editData });
             }}
             title="Edit Policy"
@@ -319,38 +332,77 @@ export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
           </button>
         </>}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 select-none">
-          {[
-            ['policy_no','Policy Number',true,'text', 'PL-XXXX-XXXX'],
-            ['holder_name','Policy Holder Name',true,'text', 'Full legal name'],
-            ['relation','Son/Daughter/Wife of',false,'text', 'Guardian/Spouse Name'],
-            ['cnic','CNIC / ID Number',true,'text', '00000-0000000-0'],
-            ['contact_1','Contact No 1',false,'text', '+92 XXX XXXXXXX'],
-            ['contact_2','Contact No 2',false,'text', '+92 XXX XXXXXXX'],
-            ['premium','Premium Amount (PKR)',true,'number', '50,000'],
-            ['issue_date','Issue Date',true,'date', ''],
-            ['due_date','Due Date',false,'date', ''],
-            ['table_term','Table Term',false,'text', 'e.g. 10 Years'],
-            ['last_paid_date','Last Paid Date',false,'date', ''],
-          ].map(([k,label,req,type,placeholder])=>(
-            <div key={k} className="flex flex-col gap-1.5">
-              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">
-                {label} {req && <span className="text-error">*</span>}
-              </label>
-              <input
-                type={type === 'date' ? 'text' : type}
-                placeholder={type === 'date' ? 'DD/MM/YYYY' : placeholder}
-                autoFocus={k === 'policy_no'}
-                className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${
-                  errors[k] ? 'border-error focus:border-error' : ''
-                }`}
-                value={modal.data[k]||''}
-                onChange={e=>set(k, type === 'date' ? formatDateInput(e.target.value) : e.target.value)}
-              />
-              {errors[k]&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors[k]}</span>}
+        <div className="space-y-6 select-none">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[
+              ['policy_no','Policy Number',true,'text', 'PL-XXXX-XXXX'],
+              ['holder_name','Policy Holder Name',true,'text', 'Full legal name'],
+              ['relation','Son/Daughter/Wife of',false,'text', 'Guardian/Spouse Name'],
+              ['cnic','CNIC / ID Number',true,'text', '00000-0000000-0'],
+              ['dob','Date of Birth',false,'date', ''],
+              ['contact_1','Contact No 1',false,'text', '+92 XXX XXXXXXX'],
+              ['contact_2','Contact No 2',false,'text', '+92 XXX XXXXXXX'],
+              ['premium','Premium Amount (PKR)',true,'number', '50,000'],
+              ['issue_date','Issue Date',true,'date', ''],
+              ['due_date','Due Date',false,'date', ''],
+              ['table_term','Table Term',false,'text', 'e.g. 10 Years'],
+              ['last_paid_date','Last Paid Date',false,'date', ''],
+            ].map(([k,label,req,type,placeholder])=>(
+              <div key={k} className="flex flex-col gap-1.5">
+                <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">
+                  {label} {req && <span className="text-error">*</span>}
+                </label>
+                <div className="relative">
+                  <input
+                    type={type === 'date' ? 'text' : type}
+                    placeholder={type === 'date' ? 'DD/MM/YYYY' : placeholder}
+                    autoFocus={k === 'policy_no'}
+                    className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${
+                      errors[k] ? 'border-error focus:border-error' : ''
+                    } ${type === 'date' ? 'pr-10' : ''}`}
+                    value={modal.data[k]||''}
+                    onChange={e=>set(k, type === 'date' ? formatDateInput(e.target.value) : e.target.value)}
+                  />
+                  {type === 'date' && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer flex items-center justify-center w-6 h-6 z-10">
+                      <span className="material-symbols-outlined text-outline text-[18px] pointer-events-none">calendar_month</span>
+                      <input 
+                        type="date"
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        value={toDbDate(modal.data[k]) || ''}
+                        onChange={e => {
+                          if (e.target.value) {
+                            set(k, toDisplayDate(e.target.value));
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+                {errors[k]&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors[k]}</span>}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-border-subtle/50 pt-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Assigned SR <span className="text-error">*</span></label>
+              <SearchableDropdown id="pol-sr" options={srOpts} value={modal.data.sr_id} onChange={handleSRChange} placeholder="Select SR…"/>
+              {errors.sr_id && <span className="text-[11px] text-error font-semibold mt-0.5">{errors.sr_id}</span>}
             </div>
-          ))}
-          <div className="flex flex-col gap-1.5 md:col-span-2">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Assigned SM <span className="text-error">*</span></label>
+              <SearchableDropdown id="pol-sm" options={smOpts} value={modal.data.sm_id} onChange={handleSMChange} placeholder="Select SM…"/>
+              {errors.sm_id && <span className="text-[11px] text-error font-semibold mt-0.5">{errors.sm_id}</span>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Assigned SSM <span className="text-error">*</span></label>
+              <SearchableDropdown id="pol-ssm" options={ssmOpts} value={modal.data.ssm_id} onChange={handleSSMChange} placeholder="Select SSM…"/>
+              {errors.ssm_id && <span className="text-[11px] text-error font-semibold mt-0.5">{errors.ssm_id}</span>}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5 border-t border-border-subtle/50 pt-4">
             <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Permanent Address</label>
             <textarea
               className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm resize-none"
@@ -359,18 +411,6 @@ export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
               placeholder="Building, Street, City"
               rows={2}
             />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Assigned SR</label>
-            <SearchableDropdown id="pol-sr" options={srOpts} value={modal.data.sr_id} onChange={handleSRChange} placeholder="Select SR…"/>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Assigned SM</label>
-            <SearchableDropdown id="pol-sm" options={smOpts} value={modal.data.sm_id} onChange={handleSMChange} placeholder="Select SM…"/>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Assigned SSM</label>
-            <SearchableDropdown id="pol-ssm" options={ssmOpts} value={modal.data.ssm_id} onChange={handleSSMChange} placeholder="Select SSM…"/>
           </div>
         </div>
       </Modal>

@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 export default function DonutChart({ title, achieved, target, color = '#007AFF', id, onEditTarget }) {
-  const pct     = target > 0 ? Math.min((achieved / target) * 100, 100) : 0;
-  const data    = [
-    { name: 'Achieved', value: Math.max(pct, 0.5) },
-    { name: 'Remaining', value: Math.max(100 - pct, 0) },
+  const pct      = target > 0 ? (achieved / target) * 100 : 0;
+  const chartPct = Math.min(pct, 100);
+  const data     = [
+    { name: 'Achieved', value: Math.max(chartPct, 0.5) },
+    { name: 'Remaining', value: Math.max(100 - chartPct, 0) },
   ];
 
   const [editing, setEditing] = useState(false);
@@ -39,7 +40,7 @@ export default function DonutChart({ title, achieved, target, color = '#007AFF',
               <Cell fill="var(--chart-remaining)" />
             </Pie>
             <Tooltip
-              formatter={(val, name) => [name === 'Achieved' ? `${pct.toFixed(1)}%` : `${(100-pct).toFixed(1)}%`, name]}
+              formatter={(val, name) => [name === 'Achieved' ? `${pct.toFixed(1)}%` : `${Math.max(100 - pct, 0).toFixed(1)}%`, name]}
               contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: '0.75rem', color: 'var(--text-primary)' }}
             />
           </PieChart>

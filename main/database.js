@@ -56,6 +56,7 @@ const SCHEMA = `
     cnic              TEXT NOT NULL,
     contact_1         TEXT,
     contact_2         TEXT,
+    dob               DATE,
     status            TEXT CHECK(status IN ('active','inactive')) DEFAULT 'active',
     relation          TEXT,
     registration_no   TEXT,
@@ -71,6 +72,7 @@ const SCHEMA = `
     cnic                TEXT NOT NULL,
     contact_1           TEXT,
     contact_2           TEXT,
+    dob                 DATE,
     am_id               INTEGER REFERENCES Area_Managers(id),
     cnic_pic            TEXT,
     nominee_cnic_pic    TEXT,
@@ -94,6 +96,7 @@ const SCHEMA = `
     cnic                TEXT NOT NULL,
     contact_1           TEXT,
     contact_2           TEXT,
+    dob                 DATE,
     ssm_id              INTEGER REFERENCES SSM(id),
     am_id               INTEGER REFERENCES Area_Managers(id),
     cnic_pic            TEXT,
@@ -118,6 +121,7 @@ const SCHEMA = `
     cnic                TEXT NOT NULL,
     contact_1           TEXT,
     contact_2           TEXT,
+    dob                 DATE,
     sm_id               INTEGER REFERENCES SM(id),
     ssm_id              INTEGER REFERENCES SSM(id),
     am_id               INTEGER REFERENCES Area_Managers(id),
@@ -163,6 +167,7 @@ const SCHEMA = `
     address            TEXT,
     contact_1          TEXT,
     contact_2          TEXT,
+    dob                DATE,
     premium            REAL NOT NULL,
     issue_date         DATE NOT NULL,
     due_date           DATE,
@@ -232,39 +237,39 @@ function seedSampleData(db) {
 
   // ── 3 Area Managers ──────────────────────────────────────────
   const insAM = db.prepare(`
-    INSERT INTO Area_Managers (am_code, am_name, address, cnic, contact_1, contact_2, status)
-    VALUES (?, ?, ?, ?, ?, ?, 'active')
+    INSERT INTO Area_Managers (am_code, am_name, address, cnic, contact_1, contact_2, status, dob)
+    VALUES (?, ?, ?, ?, ?, ?, 'active', ?)
   `);
-  const am1 = insAM.run('AM001', encrypt('Muhammad Aslam Khan'),      encrypt('House 12, Street 4, Model Town, Lahore'), encrypt('35201-1234567-8'), encrypt('03001234567'), encrypt('03211234567'));
-  const am2 = insAM.run('AM002', encrypt('Rashid Mehmood Chaudhry'),  encrypt('Plot 45, Gulberg III, Lahore'),           encrypt('35202-2345678-9'), encrypt('03012345678'), encrypt(''));
-  const am3 = insAM.run('AM003', encrypt('Tariq Hassan Siddiqui'),    encrypt('House 7, DHA Phase 1, Karachi'),         encrypt('42101-3456789-0'), encrypt('03213456789'), encrypt(''));
+  const am1 = insAM.run('AM001', encrypt('Muhammad Aslam Khan'),      encrypt('House 12, Street 4, Model Town, Lahore'), encrypt('35201-1234567-8'), encrypt('03001234567'), encrypt('03211234567'), '1975-04-12');
+  const am2 = insAM.run('AM002', encrypt('Rashid Mehmood Chaudhry'),  encrypt('Plot 45, Gulberg III, Lahore'),           encrypt('35202-2345678-9'), encrypt('03012345678'), encrypt(''), '1978-08-25');
+  const am3 = insAM.run('AM003', encrypt('Tariq Hassan Siddiqui'),    encrypt('House 7, DHA Phase 1, Karachi'),         encrypt('42101-3456789-0'), encrypt('03213456789'), encrypt(''), '1973-11-05');
 
   // ── 3 SSMs ───────────────────────────────────────────────────
   const insSSM = db.prepare(`
-    INSERT INTO SSM (ssm_code, ssm_name, address, cnic, contact_1, contact_2, am_id, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
+    INSERT INTO SSM (ssm_code, ssm_name, address, cnic, contact_1, contact_2, am_id, status, dob)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)
   `);
-  const ssm1 = insSSM.run('SSM001', encrypt('Imran Ali Butt'),       encrypt('House 22, Model Town Ext, Lahore'),      encrypt('35201-4567890-1'), encrypt('03334567890'), encrypt(''), am1.lastInsertRowid);
-  const ssm2 = insSSM.run('SSM002', encrypt('Naveed Iqbal Raja'),    encrypt('House 15, Johar Town, Lahore'),          encrypt('35202-5678901-2'), encrypt('03445678901'), encrypt(''), am2.lastInsertRowid);
-  const ssm3 = insSSM.run('SSM003', encrypt('Zulfiqar Ahmed Mirza'), encrypt('Flat 8, Gulshan-e-Iqbal, Karachi'),     encrypt('42101-6789012-3'), encrypt('03556789012'), encrypt(''), am3.lastInsertRowid);
+  const ssm1 = insSSM.run('SSM001', encrypt('Imran Ali Butt'),       encrypt('House 22, Model Town Ext, Lahore'),      encrypt('35201-4567890-1'), encrypt('03334567890'), encrypt(''), am1.lastInsertRowid, '1982-01-15');
+  const ssm2 = insSSM.run('SSM002', encrypt('Naveed Iqbal Raja'),    encrypt('House 15, Johar Town, Lahore'),          encrypt('35202-5678901-2'), encrypt('03445678901'), encrypt(''), am2.lastInsertRowid, '1984-06-20');
+  const ssm3 = insSSM.run('SSM003', encrypt('Zulfiqar Ahmed Mirza'), encrypt('Flat 8, Gulshan-e-Iqbal, Karachi'),     encrypt('42101-6789012-3'), encrypt('03556789012'), encrypt(''), am3.lastInsertRowid, '1980-09-30');
 
   // ── 3 SMs ────────────────────────────────────────────────────
   const insSM = db.prepare(`
-    INSERT INTO SM (sm_code, sm_name, address, cnic, contact_1, contact_2, ssm_id, am_id, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')
+    INSERT INTO SM (sm_code, sm_name, address, cnic, contact_1, contact_2, ssm_id, am_id, status, dob)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
   `);
-  const sm1 = insSM.run('SM001', encrypt('Ahsan Raza Qureshi'),  encrypt('Street 7, Faisal Town, Lahore'),    encrypt('35201-7890123-4'), encrypt('03367890123'), encrypt(''), ssm1.lastInsertRowid, am1.lastInsertRowid);
-  const sm2 = insSM.run('SM002', encrypt('Bilal Hussain Rana'),  encrypt('House 33, Township, Lahore'),       encrypt('35202-8901234-5'), encrypt('03478901234'), encrypt(''), ssm2.lastInsertRowid, am2.lastInsertRowid);
-  const sm3 = insSM.run('SM003', encrypt('Kamran Shah Afridi'),  encrypt('House 18, PECHS Block 6, Karachi'), encrypt('42101-9012345-6'), encrypt('03589012345'), encrypt(''), ssm3.lastInsertRowid, am3.lastInsertRowid);
+  const sm1 = insSM.run('SM001', encrypt('Ahsan Raza Qureshi'),  encrypt('Street 7, Faisal Town, Lahore'),    encrypt('35201-7890123-4'), encrypt('03367890123'), encrypt(''), ssm1.lastInsertRowid, am1.lastInsertRowid, '1988-03-10');
+  const sm2 = insSM.run('SM002', encrypt('Bilal Hussain Rana'),  encrypt('House 33, Township, Lahore'),       encrypt('35202-8901234-5'), encrypt('03478901234'), encrypt(''), ssm2.lastInsertRowid, am2.lastInsertRowid, '1987-12-05');
+  const sm3 = insSM.run('SM003', encrypt('Kamran Shah Afridi'),  encrypt('House 18, PECHS Block 6, Karachi'), encrypt('42101-9012345-6'), encrypt('03589012345'), encrypt(''), ssm3.lastInsertRowid, am3.lastInsertRowid, '1989-07-22');
 
   // ── 3 SRs ────────────────────────────────────────────────────
   const insSR = db.prepare(`
-    INSERT INTO SR (sr_code, sr_name, address, cnic, contact_1, contact_2, sm_id, ssm_id, am_id, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+    INSERT INTO SR (sr_code, sr_name, address, cnic, contact_1, contact_2, sm_id, ssm_id, am_id, status, dob)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
   `);
-  const sr1 = insSR.run('SR001', encrypt('Usman Ghani Malik'),  encrypt('House 5, Garden Town, Lahore'),     encrypt('35201-0123456-7'), encrypt('03300123456'), encrypt(''), sm1.lastInsertRowid, ssm1.lastInsertRowid, am1.lastInsertRowid);
-  const sr2 = insSR.run('SR002', encrypt('Faisal Khan Lodhi'),  encrypt('House 11, Bahria Town, Lahore'),    encrypt('35202-1234568-9'), encrypt('03411234567'), encrypt(''), sm2.lastInsertRowid, ssm2.lastInsertRowid, am2.lastInsertRowid);
-  const sr3 = insSR.run('SR003', encrypt('Hamid Shaikh Baloch'),encrypt('Flat 3, Defence View, Karachi'),    encrypt('42101-2345678-9'), encrypt('03522345678'), encrypt(''), sm3.lastInsertRowid, ssm3.lastInsertRowid, am3.lastInsertRowid);
+  const sr1 = insSR.run('SR001', encrypt('Usman Ghani Malik'),  encrypt('House 5, Garden Town, Lahore'),     encrypt('35201-0123456-7'), encrypt('03300123456'), encrypt(''), sm1.lastInsertRowid, ssm1.lastInsertRowid, am1.lastInsertRowid, '1993-02-28');
+  const sr2 = insSR.run('SR002', encrypt('Faisal Khan Lodhi'),  encrypt('House 11, Bahria Town, Lahore'),    encrypt('35202-1234568-9'), encrypt('03411234567'), encrypt(''), sm2.lastInsertRowid, ssm2.lastInsertRowid, am2.lastInsertRowid, '1995-10-14');
+  const sr3 = insSR.run('SR003', encrypt('Hamid Shaikh Baloch'),encrypt('Flat 3, Defence View, Karachi'),    encrypt('42101-2345678-9'), encrypt('03522345678'), encrypt(''), sm3.lastInsertRowid, ssm3.lastInsertRowid, am3.lastInsertRowid, '1992-05-19');
 
   // ── 3 Proposals ──────────────────────────────────────────────
   const insProp = db.prepare(`
@@ -286,12 +291,12 @@ function seedSampleData(db) {
   const insP = db.prepare(`
     INSERT INTO Policy_Register
       (policy_no, holder_name, cnic, address, contact_1, contact_2,
-       premium, issue_date, due_date, table_term, last_paid_date, sr_id, sm_id, ssm_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       premium, issue_date, due_date, table_term, last_paid_date, sr_id, sm_id, ssm_id, dob)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  const p1 = insP.run(encrypt('POL-2026-001'), encrypt('Ali Ahmed Siddiqui'), encrypt('35201-5678901-2'), encrypt('House 10, Model Town, Lahore'), encrypt('03001111111'), encrypt(''), 25000, '2025-06-01', fmt(due1), '20 Years', '2026-06-01', sr1.lastInsertRowid, sm1.lastInsertRowid, ssm1.lastInsertRowid);
-  const p2 = insP.run(encrypt('POL-2026-002'), encrypt('Sara Malik Ansari'),  encrypt('35202-6789012-3'), encrypt('House 8, Gulberg II, Lahore'),  encrypt('03002222222'), encrypt(''), 18000, '2025-07-15', fmt(due2), '15 Years', '2026-05-15', sr2.lastInsertRowid, sm2.lastInsertRowid, ssm2.lastInsertRowid);
-  const p3 = insP.run(encrypt('POL-2026-003'), encrypt('Khalid Rehman Dar'),  encrypt('42101-7890123-4'), encrypt('House 3, DHA Phase 4, Karachi'), encrypt('03003333333'), encrypt(''), 30000, '2025-08-20', fmt(due3), '25 Years', '2026-04-20', sr3.lastInsertRowid, sm3.lastInsertRowid, ssm3.lastInsertRowid);
+  const p1 = insP.run(encrypt('POL-2026-001'), encrypt('Ali Ahmed Siddiqui'), encrypt('35201-5678901-2'), encrypt('House 10, Model Town, Lahore'), encrypt('03001111111'), encrypt(''), 25000, '2025-06-01', fmt(due1), '20 Years', '2026-06-01', sr1.lastInsertRowid, sm1.lastInsertRowid, ssm1.lastInsertRowid, '1990-05-12');
+  const p2 = insP.run(encrypt('POL-2026-002'), encrypt('Sara Malik Ansari'),  encrypt('35202-6789012-3'), encrypt('House 8, Gulberg II, Lahore'),  encrypt('03002222222'), encrypt(''), 18000, '2025-07-15', fmt(due2), '15 Years', '2026-05-15', sr2.lastInsertRowid, sm2.lastInsertRowid, ssm2.lastInsertRowid, '1995-10-14');
+  const p3 = insP.run(encrypt('POL-2026-003'), encrypt('Khalid Rehman Dar'),  encrypt('42101-7890123-4'), encrypt('House 3, DHA Phase 4, Karachi'), encrypt('03003333333'), encrypt(''), 30000, '2025-08-20', fmt(due3), '25 Years', '2026-04-20', sr3.lastInsertRowid, sm3.lastInsertRowid, ssm3.lastInsertRowid, '1982-01-15');
 
   // Notifications for all 3 policies
   const insN = db.prepare(`INSERT INTO Notifications (policy_id, triggered_date) VALUES (?, ?)`);
@@ -358,12 +363,24 @@ function initializeDatabase() {
         log.info(`Added passport_pic column to ${table} table`);
       } catch (err) {}
     }
+
+    // 5. Add dob column
+    try {
+      db.prepare(`ALTER TABLE ${table} ADD COLUMN dob DATE`).run();
+      log.info(`Added dob column to ${table} table`);
+    } catch (err) {}
   }
 
   // Migrations for Policy_Register relation
   try {
     db.prepare('ALTER TABLE Policy_Register ADD COLUMN relation TEXT').run();
     log.info('Added relation column to Policy_Register table');
+  } catch (err) {}
+
+  // Migrations for Policy_Register dob
+  try {
+    db.prepare('ALTER TABLE Policy_Register ADD COLUMN dob DATE').run();
+    log.info('Added dob column to Policy_Register table');
   } catch (err) {}
 
   // Migrations for SR total_business

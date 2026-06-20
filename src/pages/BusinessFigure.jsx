@@ -4,10 +4,52 @@ import api from '../lib/api.js';
 
 const ROLES = ['SR', 'SM', 'SSM', 'AM'];
 
-function today() { return new Date().toISOString().split('T')[0]; }
+const toDisplayDate = (dbDate) => {
+  if (!dbDate) return '';
+  const parts = dbDate.split('-');
+  if (parts.length === 3 && parts[0].length === 4) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dbDate;
+};
+
+const toDbDate = (displayDate) => {
+  if (!displayDate) return '';
+  const parts = displayDate.split('/');
+  if (parts.length === 3 && parts[2].length === 4) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return displayDate;
+};
+
+const formatDateInput = (value) => {
+  let digits = value.replace(/\D/g, '');
+  if (digits.length > 8) digits = digits.slice(0, 8);
+  let formatted = '';
+  if (digits.length > 0) {
+    formatted += digits.slice(0, 2);
+  }
+  if (digits.length > 2) {
+    formatted += '/' + digits.slice(2, 4);
+  }
+  if (digits.length > 4) {
+    formatted += '/' + digits.slice(4, 8);
+  }
+  return formatted;
+};
+
+function today() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${dd}/${mm}/${yyyy}`;
+}
 function monthStart() {
-  const d = new Date(); d.setDate(1);
-  return d.toISOString().split('T')[0];
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `01/${mm}/${yyyy}`;
 }
 function fmt(n) { return `Rs. ${Number(n || 0).toLocaleString()}`; }
 
@@ -24,10 +66,12 @@ export default function BusinessFigure() {
     setLoading(true);
     try {
       let data;
-      if (role === 'SR') data = await api.srFigure({ from, to });
-      else if (role === 'SM') data = await api.smFigure({ from, to });
-      else if (role === 'SSM') data = await api.ssmFigure({ from, to });
-      else data = await api.amFigure({ from, to });
+      const dbFrom = toDbDate(from);
+      const dbTo = toDbDate(to);
+      if (role === 'SR') data = await api.srFigure({ from: dbFrom, to: dbTo });
+      else if (role === 'SM') data = await api.smFigure({ from: dbFrom, to: dbTo });
+      else if (role === 'SSM') data = await api.ssmFigure({ from: dbFrom, to: dbTo });
+      else data = await api.amFigure({ from: dbFrom, to: dbTo });
       setRows(data || []);
     } catch {
       toast('Failed to load business figures', 'error');
@@ -71,7 +115,7 @@ export default function BusinessFigure() {
 
   const handleExportPDF = async () => {
     toast('Generating PDF performance report...', 'info');
-    const res = await api.exportBusinessPDF({ from, to, role, data: displayRows });
+    const res = await api.exportBusinessPDF({ from: toDbDate(from), to: toDbDate(to), role, data: displayRows });
     if (res?.ok) {
       toast(`PDF saved to: ${res.path}`, 'success');
     } else if (res?.ok === false && res?.canceled) {
@@ -83,7 +127,7 @@ export default function BusinessFigure() {
 
   const handleExportExcel = async () => {
     toast('Generating Excel performance report...', 'info');
-    const res = await api.exportBusinessExcel({ from, to, role, data: displayRows });
+    const res = await api.exportBusinessExcel({ from: toDbDate(from), to: toDbDate(to), role, data: displayRows });
     if (res?.ok) {
       toast(`Excel saved to: ${res.path}`, 'success');
     } else if (res?.ok === false && res?.canceled) {
@@ -148,21 +192,49 @@ export default function BusinessFigure() {
               <div className="relative">
                 <input
                   id="bf-from"
-                  type="date"
-                  className="bg-surface-deep border border-border-subtle text-body-md p-2 rounded focus:ring-2 focus:ring-primary focus:outline-none w-40 text-on-surface"
+                  type="text"
+                  placeholder="DD/MM/YYYY"
+                  className="bg-surface-deep border border-border-subtle text-body-md p-2 pr-10 rounded focus:ring-2 focus:ring-primary focus:outline-none w-40 text-on-surface"
                   value={from}
-                  onChange={e => setFrom(e.target.value)}
+                  onChange={e => setFrom(formatDateInput(e.target.value))}
                 />
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer flex items-center justify-center w-6 h-6 z-10">
+                  <span className="material-symbols-outlined text-outline text-[18px] pointer-events-none">calendar_month</span>
+                  <input 
+                    type="date"
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    value={toDbDate(from) || ''}
+                    onChange={e => {
+                      if (e.target.value) {
+                        setFrom(toDisplayDate(e.target.value));
+                      }
+                    }}
+                  />
+                </div>
               </div>
               <span className="text-on-surface-variant font-medium mx-1">to</span>
               <div className="relative">
                 <input
                   id="bf-to"
-                  type="date"
-                  className="bg-surface-deep border border-border-subtle text-body-md p-2 rounded focus:ring-2 focus:ring-primary focus:outline-none w-40 text-on-surface"
+                  type="text"
+                  placeholder="DD/MM/YYYY"
+                  className="bg-surface-deep border border-border-subtle text-body-md p-2 pr-10 rounded focus:ring-2 focus:ring-primary focus:outline-none w-40 text-on-surface"
                   value={to}
-                  onChange={e => setTo(e.target.value)}
+                  onChange={e => setTo(formatDateInput(e.target.value))}
                 />
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer flex items-center justify-center w-6 h-6 z-10">
+                  <span className="material-symbols-outlined text-outline text-[18px] pointer-events-none">calendar_month</span>
+                  <input 
+                    type="date"
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    value={toDbDate(to) || ''}
+                    onChange={e => {
+                      if (e.target.value) {
+                        setTo(toDisplayDate(e.target.value));
+                      }
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>

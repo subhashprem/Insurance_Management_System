@@ -99,6 +99,9 @@ export default function ProposerRegister({ onNavigate, searchFilter, clearSearch
         e.pr_date = 'Invalid date (use DD/MM/YYYY)';
       }
     }
+    if (!d.sr_id)  e.sr_id  = 'Required';
+    if (!d.sm_id)  e.sm_id  = 'Required';
+    if (!d.ssm_id) e.ssm_id = 'Required';
     return e;
   };
 
@@ -308,120 +311,144 @@ export default function ProposerRegister({ onNavigate, searchFilter, clearSearch
           </button>
         </>}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 select-none">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Proposal No <span className="text-error">*</span></label>
-            <input
-              autoFocus
-              className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${
-                errors.proposal_no ? 'border-error focus:border-error' : ''
-              }`}
-              placeholder="PR-XXXX-XXXX"
-              value={modal.data.proposal_no}
-              onChange={e=>set('proposal_no',e.target.value)}
-            />
-            {errors.proposal_no&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors.proposal_no}</span>}
+        <div className="space-y-6 select-none">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Proposal No <span className="text-error">*</span></label>
+              <input
+                autoFocus
+                className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${
+                  errors.proposal_no ? 'border-error focus:border-error' : ''
+                }`}
+                placeholder="PR-XXXX-XXXX"
+                value={modal.data.proposal_no}
+                onChange={e=>set('proposal_no',e.target.value)}
+              />
+              {errors.proposal_no&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors.proposal_no}</span>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Holder Name <span className="text-error">*</span></label>
+              <input
+                className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${
+                  errors.holder_name ? 'border-error focus:border-error' : ''
+                }`}
+                placeholder="Full legal name"
+                value={modal.data.holder_name}
+                onChange={e=>set('holder_name',e.target.value)}
+              />
+              {errors.holder_name&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors.holder_name}</span>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Contact No 1</label>
+              <input
+                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
+                placeholder="+92 XXX XXXXXXX"
+                value={modal.data.contact_1 || ''}
+                onChange={e=>set('contact_1',e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Contact No 2</label>
+              <input
+                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
+                placeholder="+92 XXX XXXXXXX"
+                value={modal.data.contact_2 || ''}
+                onChange={e=>set('contact_2',e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Amount / Premium (PKR) <span className="text-error">*</span></label>
+              <input
+                type="number"
+                className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${
+                  errors.premium ? 'border-error focus:border-error' : ''
+                }`}
+                placeholder="50,000"
+                value={modal.data.premium}
+                onChange={e=>set('premium',e.target.value)}
+              />
+              {errors.premium&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors.premium}</span>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">PR No</label>
+              <input
+                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
+                placeholder="PR Number"
+                value={modal.data.pr_no}
+                onChange={e=>set('pr_no',e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">PR Date</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="DD/MM/YYYY"
+                  className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 pr-10 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${
+                    errors.pr_date ? 'border-error focus:border-error' : ''
+                  }`}
+                  value={modal.data.pr_date || ''}
+                  onChange={e=>set('pr_date',formatDateInput(e.target.value))}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer flex items-center justify-center w-6 h-6 z-10">
+                  <span className="material-symbols-outlined text-outline text-[18px] pointer-events-none">calendar_month</span>
+                  <input 
+                    type="date"
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    value={toDbDate(modal.data.pr_date) || ''}
+                    onChange={e => {
+                      if (e.target.value) {
+                        set('pr_date', toDisplayDate(e.target.value));
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+              {errors.pr_date&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors.pr_date}</span>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Amount Type</label>
+              <select
+                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all font-body-md text-sm"
+                value={modal.data.amount_type}
+                onChange={e=>set('amount_type',e.target.value)}
+              >
+                <option value="cash">Cash</option>
+                <option value="cheque">Cheque</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Status</label>
+              <select
+                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all font-body-md text-sm"
+                value={modal.data.status}
+                onChange={e=>set('status',e.target.value)}
+              >
+                <option value="not_ok">Not OK</option>
+                <option value="ok">OK</option>
+              </select>
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Holder Name <span className="text-error">*</span></label>
-            <input
-              className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${
-                errors.holder_name ? 'border-error focus:border-error' : ''
-              }`}
-              placeholder="Full legal name"
-              value={modal.data.holder_name}
-              onChange={e=>set('holder_name',e.target.value)}
-            />
-            {errors.holder_name&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors.holder_name}</span>}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-border-subtle/50 pt-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Assigned SR <span className="text-error">*</span></label>
+              <SearchableDropdown id="prop-sr" options={srOpts} value={modal.data.sr_id} onChange={handleSRChange} placeholder="Select SR…"/>
+              {errors.sr_id && <span className="text-[11px] text-error font-semibold mt-0.5">{errors.sr_id}</span>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Assigned SM <span className="text-error">*</span></label>
+              <SearchableDropdown id="prop-sm" options={smOpts} value={modal.data.sm_id} onChange={handleSMChange} placeholder="Select SM…"/>
+              {errors.sm_id && <span className="text-[11px] text-error font-semibold mt-0.5">{errors.sm_id}</span>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Assigned SSM <span className="text-error">*</span></label>
+              <SearchableDropdown id="prop-ssm" options={ssmOpts} value={modal.data.ssm_id} onChange={handleSSMChange} placeholder="Select SSM…"/>
+              {errors.ssm_id && <span className="text-[11px] text-error font-semibold mt-0.5">{errors.ssm_id}</span>}
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Contact No 1</label>
-            <input
-              className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
-              placeholder="+92 XXX XXXXXXX"
-              value={modal.data.contact_1 || ''}
-              onChange={e=>set('contact_1',e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Contact No 2</label>
-            <input
-              className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
-              placeholder="+92 XXX XXXXXXX"
-              value={modal.data.contact_2 || ''}
-              onChange={e=>set('contact_2',e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Amount / Premium (PKR) <span className="text-error">*</span></label>
-            <input
-              type="number"
-              className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${
-                errors.premium ? 'border-error focus:border-error' : ''
-              }`}
-              placeholder="50,000"
-              value={modal.data.premium}
-              onChange={e=>set('premium',e.target.value)}
-            />
-            {errors.premium&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors.premium}</span>}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">PR No</label>
-            <input
-              className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
-              placeholder="PR Number"
-              value={modal.data.pr_no}
-              onChange={e=>set('pr_no',e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">PR Date</label>
-            <input
-              type="text"
-              placeholder="DD/MM/YYYY"
-              className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${
-                errors.pr_date ? 'border-error focus:border-error' : ''
-              }`}
-              value={modal.data.pr_date}
-              onChange={e=>set('pr_date',formatDateInput(e.target.value))}
-            />
-            {errors.pr_date&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors.pr_date}</span>}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Amount Type</label>
-            <select
-              className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all font-body-md text-sm"
-              value={modal.data.amount_type}
-              onChange={e=>set('amount_type',e.target.value)}
-            >
-              <option value="cash">Cash</option>
-              <option value="cheque">Cheque</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Assigned SR</label>
-            <SearchableDropdown id="prop-sr" options={srOpts} value={modal.data.sr_id} onChange={handleSRChange} placeholder="Select SR…"/>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Assigned SM</label>
-            <SearchableDropdown id="prop-sm" options={smOpts} value={modal.data.sm_id} onChange={handleSMChange} placeholder="Select SM…"/>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Assigned SSM</label>
-            <SearchableDropdown id="prop-ssm" options={ssmOpts} value={modal.data.ssm_id} onChange={handleSSMChange} placeholder="Select SSM…"/>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Status</label>
-            <select
-              className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all font-body-md text-sm"
-              value={modal.data.status}
-              onChange={e=>set('status',e.target.value)}
-            >
-              <option value="not_ok">Not OK</option>
-              <option value="ok">OK</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5 md:col-span-2">
+
+          <div className="flex flex-col gap-1.5 border-t border-border-subtle/50 pt-4">
             <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Requirements / Notes</label>
             <textarea
               className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm resize-none"
