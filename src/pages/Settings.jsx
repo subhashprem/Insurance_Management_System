@@ -362,7 +362,7 @@ export default function Settings({ user, onProfileUpdate }) {
             <div className="p-4 bg-surface-deep border border-outline-variant/30 rounded-lg relative overflow-hidden group">
               <span className="material-symbols-outlined text-[64px] absolute right-2 bottom-[-10px] opacity-5 text-primary group-hover:scale-110 transition-transform duration-300">code</span>
               <h5 className="font-bold text-on-surface text-sm">Subhash Prem</h5>
-              <p className="text-[10px] uppercase text-primary font-bold tracking-widest mt-0.5">Software Architect</p>
+              <p className="text-[10px] uppercase text-primary font-bold tracking-widest mt-0.5">Software Engineer and Full Stack Developer</p>
               <div className="mt-3 space-y-1.5 text-xs text-on-surface-variant font-medium">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[16px] text-outline">call</span>
@@ -380,16 +380,18 @@ export default function Settings({ user, onProfileUpdate }) {
             {/* Dev 2 */}
             <div className="p-4 bg-surface-deep border border-outline-variant/30 rounded-lg relative overflow-hidden group">
               <span className="material-symbols-outlined text-[64px] absolute right-2 bottom-[-10px] opacity-5 text-primary group-hover:scale-110 transition-transform duration-300">terminal</span>
-              <h5 className="font-bold text-on-surface text-sm">Basit Ali</h5>
-              <p className="text-[10px] uppercase text-primary font-bold tracking-widest mt-0.5">Full Stack Developer</p>
+              <h5 className="font-bold text-on-surface text-sm">Manohar Lal Lalwani</h5>
+              <p className="text-[10px] uppercase text-primary font-bold tracking-widest mt-0.5">Owner and Manager</p>
               <div className="mt-3 space-y-1.5 text-xs text-on-surface-variant font-medium">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[16px] text-outline">call</span>
-                  <a href="tel:03243859337" className="hover:text-electric-blue transition-colors">0324-3859337</a>
+                  <a href="tel:03362711086" className="hover:text-electric-blue transition-colors">0336-2711086</a>
+                  <span className="text-outline-variant">/</span>
+                  <a href="tel:03003427398" className="hover:text-electric-blue transition-colors">0300-3427398</a>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[16px] text-outline">mail</span>
-                  <a href="mailto:basit.web24@gmail.com" className="hover:text-electric-blue transition-colors">basit.web24@gmail.com</a>
+                  <a href="mailto:lalwanisoftwaresolutions@gmail.com" className="hover:text-electric-blue transition-colors">lalwanisoftwaresolutions@gmail.com</a>
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 'use strict';
-const path      = require('path');
-const fs        = require('fs');
+const path = require('path');
+const fs = require('fs');
 const { app, shell } = require('electron');
 const { machineIdSync } = require('node-machine-id');
 const nodemailer = require('nodemailer');
@@ -18,13 +18,13 @@ const SMTP_CONFIG = {
   port: 465,                   // SMTP port (465 for secure SSL, 587 for TLS)
   secure: true,                // true for port 465, false for other ports
   auth: {
-    user: 'basitaliburiro1110@gmail.com',  // The email address that will SEND the notifications
-    pass: 'kwpf batd bsqt duxy',     // The App Password generated from your Google Account
+    user: 'lalwanisoftwaresolutions@gmail.com',  // The email address that will SEND the notifications
+    pass: 'hclf guzi efkn hfna',     // The App Password generated from your Google Account
   }
 };
 
-const RECEIVER_EMAIL = 'basit.web24@gmail.com, subhashprem4@gmail.com'; // Your email address where you want to receive alerts
-const DEVELOPER_WHATSAPP = '923243859337'; // Your WhatsApp number (with country code, e.g. 923XXXXXXXXX)
+const RECEIVER_EMAIL = 'lalwanisoftwaresolutions@gmail.com, subhashprem4@gmail.com, basit.web24@gmail.com'; // Your email address where you want to receive alerts
+const DEVELOPER_WHATSAPP = '923337104578'; // Your WhatsApp number (with country code, e.g. 923XXXXXXXXX)
 // ========================================================================
 
 function getConfig() {
@@ -50,14 +50,14 @@ function getCustomerDetails() {
   try {
     const db = getDb();
     const admins = db.prepare("SELECT name, username, contact, contact_email, contact_number, created_at FROM Users WHERE role = 'admin'").all();
-    
+
     // Scan all admin accounts. Choose the one that has non-empty email or contact number.
     let chosen = null;
     for (const admin of admins) {
       const contact = admin.contact ? decrypt(admin.contact) : '';
       const email = admin.contact_email ? decrypt(admin.contact_email) : '';
       const number = admin.contact_number ? decrypt(admin.contact_number) : '';
-      
+
       const realEmail = email || (contact && contact.includes('@') ? contact : '');
       const realNumber = number || (contact && !contact.includes('@') ? contact : '');
 
@@ -97,7 +97,7 @@ function getCustomerDetails() {
  */
 async function sendLicenseEmail(subject, text) {
   const log = getLogger();
-  
+
   if (SMTP_CONFIG.auth.user.includes('your-sender-email') || SMTP_CONFIG.auth.pass.includes('your-gmail-app-password')) {
     log.warn('License Alert email skipped: SMTP credentials not configured by developer.');
     return false;
@@ -111,7 +111,7 @@ async function sendLicenseEmail(subject, text) {
     const fromName = customer.name || 'Client Admin';
     const fromEmail = customer.contact_email && customer.contact_email.includes('@') ? customer.contact_email : SMTP_CONFIG.auth.user;
     await transporter.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
+      from: `"${fromName}" <${SMTP_CONFIG.auth.user}>`,
       replyTo: fromEmail,
       to: toEmail,
       subject: subject,
@@ -176,14 +176,14 @@ function checkLicense() {
 
   if (!config) {
     // First launch — generate and save license
-    const installTs  = Date.now();
-    const expiryTs   = installTs + ONE_YEAR_MS;
+    const installTs = Date.now();
+    const expiryTs = installTs + ONE_YEAR_MS;
     const licenseKey = generateLicenseKey(machineId, installTs);
-    config = { 
-      machineId, 
-      installTs, 
-      expiryTs, 
-      licenseKey, 
+    config = {
+      machineId,
+      installTs,
+      expiryTs,
+      licenseKey,
       licenseSent: false,
       notified365Days: false,
       notified30Days: false,
@@ -203,14 +203,14 @@ function checkLicense() {
   if (config.notified7Days === undefined) config.notified7Days = false;
   if (config.usedKeys === undefined) config.usedKeys = [];
 
-  const now      = Date.now();
-  const msLeft   = config.expiryTs - now;
+  const now = Date.now();
+  const msLeft = config.expiryTs - now;
   const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
 
   let status;
-  if (daysLeft <= 0)  status = 'expired';
+  if (daysLeft <= 0) status = 'expired';
   else if (daysLeft <= 30) status = 'expiring';
-  else                status = 'valid';
+  else status = 'valid';
 
   log.info(`License check — status: ${status}, daysLeft: ${daysLeft}`);
 
@@ -228,7 +228,7 @@ function checkLicense() {
 async function renewLicense(keyInput) {
   const log = getLogger();
   const machineId = machineIdSync({ original: true });
-  
+
   // 1. Decrypt and check if key matches machine ID
   const valid = validateRenewalKey(keyInput, machineId);
   if (!valid) {
@@ -330,22 +330,27 @@ async function handleLoginAlerts(userRole, loggedInUser) {
   const config = getConfig();
   if (!config) return;
 
+  const isRenewal = config.usedKeys && config.usedKeys.length > 0;
+
+  let customer;
+  if (loggedInUser) {
+    customer = {
+      name: decrypt(loggedInUser.name) || 'Admin User',
+      username: decrypt(loggedInUser.username) || 'admin',
+      contact_email: (loggedInUser.contact_email ? decrypt(loggedInUser.contact_email) : null) || (loggedInUser.contact ? decrypt(loggedInUser.contact) : '') || 'Not Provided',
+      contact_number: (loggedInUser.contact_number ? decrypt(loggedInUser.contact_number) : null) || (loggedInUser.contact && !decrypt(loggedInUser.contact).includes('@') ? decrypt(loggedInUser.contact) : '') || 'Not Provided',
+      created_at: loggedInUser.created_at || 'Not Provided'
+    };
+  } else {
+    customer = getCustomerDetails();
+  }
+
+  const now = Date.now();
+  const msLeft = config.expiryTs - now;
+  const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
+
   if (!config.licenseSent) {
-    const isRenewal = config.usedKeys && config.usedKeys.length > 0;
     log.info(`Successful login for role: ${userRole}. Attempting silent ${isRenewal ? 'renewal' : 'installation'} email notification...`);
-    
-    let customer;
-    if (loggedInUser) {
-      customer = {
-        name: decrypt(loggedInUser.name) || 'Admin User',
-        username: decrypt(loggedInUser.username) || 'admin',
-        contact_email: (loggedInUser.contact_email ? decrypt(loggedInUser.contact_email) : null) || (loggedInUser.contact ? decrypt(loggedInUser.contact) : '') || 'Not Provided',
-        contact_number: (loggedInUser.contact_number ? decrypt(loggedInUser.contact_number) : null) || (loggedInUser.contact && !decrypt(loggedInUser.contact).includes('@') ? decrypt(loggedInUser.contact) : '') || 'Not Provided',
-        created_at: loggedInUser.created_at || 'Not Provided'
-      };
-    } else {
-      customer = getCustomerDetails();
-    }
 
     const subject = isRenewal
       ? `[RENEWAL] Software License Renewed - Machine ID: ${config.machineId}`
@@ -367,14 +372,34 @@ async function handleLoginAlerts(userRole, loggedInUser) {
       `Activation Key:      ${config.licenseKey}\n` +
       `Software Created At: ${new Date(config.installTs).toLocaleString()}\n` +
       `Date of Renewal / Expiry: ${new Date(config.expiryTs).toLocaleDateString('en-GB')}\n` +
-      `Days Remaining:      365\n` +
+      `Days Remaining:      ${daysLeft}\n` +
       `Activation/Renewal Date: ${new Date().toLocaleString()}\n`;
-    
+
     const sent = await sendLicenseEmail(subject, text);
     if (sent) {
       config.licenseSent = true;
       saveConfig(config);
     }
+  } else {
+    log.info(`Successful login for role: ${userRole}. Sending client login alert email...`);
+
+    const subject = `[LOGIN ALERT] Client Login - User: ${customer.username}`;
+    const text = `A client has logged into Lalwani Software Solutions.\n\n` +
+      `CLIENT DETAILS:\n` +
+      `----------------------------------------\n` +
+      `Customer Name:       ${customer.name}\n` +
+      `Operator Username:   ${customer.username}\n` +
+      `Contact Email:       ${customer.contact_email}\n` +
+      `Contact Number:      ${customer.contact_number}\n` +
+      `Account Created At:  ${customer.created_at}\n\n` +
+      `MACHINE & LICENSE DETAILS:\n` +
+      `----------------------------------------\n` +
+      `Machine ID:          ${config.machineId}\n` +
+      `Activation Key:      ${config.licenseKey}\n` +
+      `Days Remaining:      ${daysLeft}\n` +
+      `Login Date/Time:     ${new Date().toLocaleString()}\n`;
+
+    await sendLicenseEmail(subject, text);
   }
 }
 
@@ -394,7 +419,9 @@ async function sendNewUserCredentialsEmail(toEmail, name, userName, plainPasswor
       `Password: ${plainPassword}\n\n` +
       `Please log in using the desktop application.\n\n` +
       `Best regards,\n` +
-      `Lalwani Software Solutions Team`;
+      `Lalwani Software Solutions\n` +
+      `Phone: 03337104578 / 03362711086\n` +
+      `Email: lalwanisoftwaresolutions@gmail.com / subhashprem4@gmail.com`;
 
     await transporter.sendMail({
       from: `"Lalwani Software Solutions" <${SMTP_CONFIG.auth.user}>`,
