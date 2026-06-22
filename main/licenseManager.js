@@ -133,7 +133,27 @@ async function sendAlertsInBackground(config, daysLeft) {
   let updated = false;
   const customer = getCustomerDetails();
 
-  // Send only the 15-day Expiration Alert (with the current active activation key) to the developer.
+  // 1. First run / Installation alert
+  if (!config.installAlertSent) {
+    log.info('Attempting first-run app installation email alert...');
+    const subject = `[INSTALLATION] New Installation - Machine ID: ${config.machineId}`;
+    const text = `A new instance of Lalwani Software Solutions has been installed and run.\n\n` +
+      `MACHINE & LICENSE DETAILS:\n` +
+      `----------------------------------------\n` +
+      `Machine ID:          ${config.machineId}\n` +
+      `Initial Activation Key: ${config.licenseKey}\n` +
+      `Installation Date:   ${new Date(config.installTs).toLocaleString()}\n` +
+      `Initial Expiry Date: ${new Date(config.expiryTs).toLocaleDateString('en-GB')}\n` +
+      `Days Remaining:      ${daysLeft}\n`;
+
+    const sent = await sendLicenseEmail(subject, text);
+    if (sent) {
+      config.installAlertSent = true;
+      updated = true;
+    }
+  }
+
+  // 2. 15-day Expiration Alert (with the current active activation key) to the developer.
   // Must check daysLeft > 0 to prevent triggering warning emails when the license has already expired.
   if (daysLeft <= 15 && daysLeft > 0 && !config.notified15Days) {
     log.info('Attempting 15-day license expiration warning email with active key...');
@@ -184,11 +204,9 @@ function checkLicense() {
       installTs,
       expiryTs,
       licenseKey,
-      licenseSent: false,
-      notified365Days: false,
-      notified30Days: false,
+      installAlertSent: false,
+      firstLoginAlertSent: false,
       notified15Days: false,
-      notified7Days: false,
       usedKeys: []
     };
     saveConfig(config);
@@ -196,11 +214,9 @@ function checkLicense() {
   }
 
   // Ensure these properties exist on loaded config (backward compatibility)
-  if (config.licenseSent === undefined) config.licenseSent = false;
-  if (config.notified365Days === undefined) config.notified365Days = false;
-  if (config.notified30Days === undefined) config.notified30Days = false;
+  if (config.installAlertSent === undefined) config.installAlertSent = false;
+  if (config.firstLoginAlertSent === undefined) config.firstLoginAlertSent = false;
   if (config.notified15Days === undefined) config.notified15Days = false;
-  if (config.notified7Days === undefined) config.notified7Days = false;
   if (config.usedKeys === undefined) config.usedKeys = [];
 
   const now = Date.now();
@@ -256,46 +272,12 @@ async function renewLicense(keyInput) {
   config.licenseKey = newActiveKey;
 
   // 6. Reset all warning flags
-  config.licenseSent = false; // Set to false initially, will be marked true if immediate email succeeds or upon subsequent login
-  config.notified365Days = false;
-  config.notified30Days = false;
+  config.firstLoginAlertSent = false;
   config.notified15Days = false;
-  config.notified7Days = false;
 
   // 7. Save config
   saveConfig(config);
   log.info('License renewed successfully. Expiry extended and new active key generated.');
-
-  // 8. Send renewal email immediately
-  try {
-    const customer = getCustomerDetails();
-    const subject = `[RENEWAL] Software License Renewed - Machine ID: ${config.machineId}`;
-    const text = `A license renewal of Lalwani Software Solutions has been successfully completed.\n\n` +
-      `CLIENT DETAILS:\n` +
-      `----------------------------------------\n` +
-      `Customer Name:       ${customer.name}\n` +
-      `Operator Username:   ${customer.username}\n` +
-      `Contact Email:       ${customer.contact_email}\n` +
-      `Contact Number:      ${customer.contact_number}\n` +
-      `Account Created At:  ${customer.created_at}\n\n` +
-      `MACHINE & LICENSE DETAILS:\n` +
-      `----------------------------------------\n` +
-      `Machine ID:          ${config.machineId}\n` +
-      `Activation Key:      ${config.licenseKey}\n` +
-      `Software Created At: ${new Date(config.installTs).toLocaleString()}\n` +
-      `Date of Renewal / Expiry: ${new Date(config.expiryTs).toLocaleDateString('en-GB')}\n` +
-      `Days Remaining:      365\n` +
-      `Activation/Renewal Date: ${new Date().toLocaleString()}\n`;
-
-    const sent = await sendLicenseEmail(subject, text);
-    if (sent) {
-      config.licenseSent = true;
-      saveConfig(config);
-      log.info('Immediate renewal email notification sent successfully.');
-    }
-  } catch (err) {
-    log.error(`Failed to send immediate renewal email: ${err.message}`);
-  }
 
   return true;
 }
@@ -349,16 +331,16 @@ async function handleLoginAlerts(userRole, loggedInUser) {
   const msLeft = config.expiryTs - now;
   const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
 
-  if (!config.licenseSent) {
-    log.info(`Successful login for role: ${userRole}. Attempting silent ${isRenewal ? 'renewal' : 'installation'} email notification...`);
+  if (!config.firstLoginAlertSent) {
+    log.info(`Successful login for role: ${userRole}. Attempting first login email notification...`);
 
     const subject = isRenewal
-      ? `[RENEWAL] Software License Renewed - Machine ID: ${config.machineId}`
-      : `[INSTALLATION] New Installation - Machine ID: ${config.machineId}`;
+      ? `[RENEWAL LOGIN] First Login After Renewal - User: ${customer.username}`
+      : `[FIRST LOGIN] First Login - User: ${customer.username}`;
 
     const text = (isRenewal
-      ? `A license renewal of Lalwani Software Solutions has been successfully completed.\n\n`
-      : `A new instance of Lalwani Software Solutions has been installed and run.\n\n`) +
+      ? `A client has logged in for the first time after renewing Lalwani Software Solutions.\n\n`
+      : `A client has logged in for the first time after installing Lalwani Software Solutions.\n\n`) +
       `CLIENT DETAILS:\n` +
       `----------------------------------------\n` +
       `Customer Name:       ${customer.name}\n` +
@@ -373,33 +355,13 @@ async function handleLoginAlerts(userRole, loggedInUser) {
       `Software Created At: ${new Date(config.installTs).toLocaleString()}\n` +
       `Date of Renewal / Expiry: ${new Date(config.expiryTs).toLocaleDateString('en-GB')}\n` +
       `Days Remaining:      ${daysLeft}\n` +
-      `Activation/Renewal Date: ${new Date().toLocaleString()}\n`;
+      `Login Date/Time:     ${new Date().toLocaleString()}\n`;
 
     const sent = await sendLicenseEmail(subject, text);
     if (sent) {
-      config.licenseSent = true;
+      config.firstLoginAlertSent = true;
       saveConfig(config);
     }
-  } else {
-    log.info(`Successful login for role: ${userRole}. Sending client login alert email...`);
-
-    const subject = `[LOGIN ALERT] Client Login - User: ${customer.username}`;
-    const text = `A client has logged into Lalwani Software Solutions.\n\n` +
-      `CLIENT DETAILS:\n` +
-      `----------------------------------------\n` +
-      `Customer Name:       ${customer.name}\n` +
-      `Operator Username:   ${customer.username}\n` +
-      `Contact Email:       ${customer.contact_email}\n` +
-      `Contact Number:      ${customer.contact_number}\n` +
-      `Account Created At:  ${customer.created_at}\n\n` +
-      `MACHINE & LICENSE DETAILS:\n` +
-      `----------------------------------------\n` +
-      `Machine ID:          ${config.machineId}\n` +
-      `Activation Key:      ${config.licenseKey}\n` +
-      `Days Remaining:      ${daysLeft}\n` +
-      `Login Date/Time:     ${new Date().toLocaleString()}\n`;
-
-    await sendLicenseEmail(subject, text);
   }
 }
 
