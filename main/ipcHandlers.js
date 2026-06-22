@@ -1209,7 +1209,7 @@ function handlePdfGenerators() {
       
       // Draw Contact Info below
       doc.fillColor('#666666').fontSize(9).font('Helvetica');
-      const contactText = 'Contact : 03337104578 / 03243859337';
+      const contactText = 'Contact : 03337104578 / 03362711086';
       const contactWidth = doc.widthOfString(contactText);
       doc.text(contactText, (doc.page.width - contactWidth) / 2, footerY + 14);
       
@@ -1369,7 +1369,7 @@ function handlePdfGenerators() {
       
       // Draw Contact Info below
       doc.fillColor('#666666').fontSize(9).font('Helvetica');
-      const contactText = 'Contact : 03337104578 / 03243859337';
+      const contactText = 'Contact : 03337104578 / 03362711086';
       const contactWidth = doc.widthOfString(contactText);
       doc.text(contactText, (doc.page.width - contactWidth) / 2, footerY + 14);
       

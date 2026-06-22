@@ -199,13 +199,13 @@ The application uses **SQLite** with encryption support. Database files are stor
 
 ## 📞 Developer Support
 
-### Subhash Prem (Software Architect)
+### Subhash Prem (Software Engineer and Full Stack Developer)
 - **Phone**: 0333-7104578 / 0315-2967527
 - **Email**: subhashprem4@gmail.com
 
-### Basit Ali (Full Stack Developer)
-- **Phone**: 0324-3859337
-- **Email**: basit.web24@gmail.com
+### Manohar Lal Lalwani (Owner and Manager)
+- **Phone**: 0336-2711086 / 0300-3427398
+- **Email**: lalwanisoftwaresolutions@gmail.com
 
 ## 📄 License
 

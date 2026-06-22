@@ -53,7 +53,7 @@ The system manages three layers of sales representatives in a clear hierarchical
 
 ### ⚙️ System Settings
 * **Operator Session Panel**: Manage active administrator credentials and profiles.
-* **Developer Support Card**: Direct contact cards for software developers (**Subhas Prem** & **Basit Ali**) with dynamic buttons to trigger WhatsApp messages, phone calls, or emails for rapid maintenance.
+* **Developer Support Card**: Direct contact cards for software developers (**Subhash Prem** & **Manohar Lal Lalwani**) with dynamic buttons to trigger WhatsApp messages, phone calls, or emails for rapid maintenance.
 * **License Panel**: Displays the active license key, expiration dates, and days remaining on the active license.
 
 ---

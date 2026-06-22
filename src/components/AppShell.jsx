@@ -311,7 +311,7 @@ export default function AppShell({ user, licenseInfo, activePage, onNavigate, on
                 {initials}
               </div>
               <div className="text-left hidden lg:block pr-1 select-none">
-                <p className="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider">{user?.role === 'developer' ? 'Super Admin' : 'Agent Admin'}</p>
+                <p className="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider">{user?.role === 'developer' ? 'Super Admin' : 'Admin'}</p>
                 <p className="text-xs font-bold text-on-surface leading-tight mt-0.5">{user?.name || 'Administrator'}</p>
               </div>
             </div>
@@ -321,8 +321,8 @@ export default function AppShell({ user, licenseInfo, activePage, onNavigate, on
         {/* License warning banner */}
         {showBanner && (
           <div className={`${isUrgent
-              ? 'bg-crimson-red text-white'
-              : 'bg-vivid-orange text-deep-charcoal'
+            ? 'bg-crimson-red text-white'
+            : 'bg-vivid-orange text-deep-charcoal'
             } px-6 py-2.5 flex items-center justify-center gap-3 text-body-md select-none shrink-0 border-b border-black/10`}>
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
               {isUrgent ? 'error' : 'warning'}

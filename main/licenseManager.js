@@ -23,7 +23,7 @@ const SMTP_CONFIG = {
   }
 };
 
-const RECEIVER_EMAIL = 'lalwanisoftwaresolutions@gmail.com, subhashprem4@gmail.com, basit.web24@gmail.com'; // Your email address where you want to receive alerts
+const RECEIVER_EMAIL = 'lalwanisoftwaresolutions@gmail.com, subhashprem4@gmail.com'; // Your email address where you want to receive alerts
 const DEVELOPER_WHATSAPP = '923337104578'; // Your WhatsApp number (with country code, e.g. 923XXXXXXXXX)
 // ========================================================================
 
