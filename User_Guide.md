@@ -8,13 +8,14 @@ Welcome to the **Insurance Policy Records Management System**. This operations g
 ## 📂 Table of Contents
 1. [System Introduction](#1-system-introduction)
 2. [Getting Started & Login](#2-getting-started--login)
-3. [The Executive Dashboard](#3-the-executive-dashboard)
-4. [Managing the Sales Organization Hierarchy](#4-managing-the-sales-organization-hierarchy)
-5. [Client & Proposal Registration](#5-client--proposal-registration)
-6. [Policy Management & Premium Calculations](#6-policy-management--premium-calculations)
-7. [Analytics & Generating Reports](#7-analytics--generating-reports)
-8. [Data Backup, Restore, and System Reset](#8-data-backup-restore-and-system-reset)
-9. [Licensing & Renewal Workflow](#9-licensing--renewal-workflow)
+3. [Input Validation & Hotkeys](#3-input-validation--hotkeys)
+4. [The Executive Dashboard](#4-the-executive-dashboard)
+5. [Managing the Sales Organization Hierarchy](#5-managing-the-sales-organization-hierarchy)
+6. [Client & Proposal Registration](#6-client--proposal-registration)
+7. [Policy Management & Premium Calculations](#7-policy-management--premium-calculations)
+8. [Analytics & Generating Reports](#8-analytics--generating-reports)
+9. [Data Backup, Restore, and System Reset](#9-data-backup-restore-and-system-reset)
+10. [Licensing & Renewal Workflow](#10-licensing--renewal-workflow)
 
 ---
 
@@ -46,7 +47,57 @@ The system seeds default profiles on the first installation:
 
 ---
 
-## 3. The Executive Dashboard
+## 3. Input Validation & Hotkeys
+
+To keep your policy records clean, standard, and secure, the system enforces real-time formatting as you type, followed by complete validations prior to saving.
+
+### 📋 Live Form Formatters & Validations
+
+1. **CNIC Fields**:
+   * **Formatting**: Auto-formats to `XXXXX-XXXXXXX-X`. Blocks any non-digit keys during typing.
+   * **Rule**: Must contain exactly 13 digits.
+2. **Phone Fields**:
+   * **Rule**: Restricted to 11 or 12 digits. Non-digit keys, spaces, and `+` symbols are blocked during entry.
+3. **Date Fields**:
+   * **Formatting**: Auto-formats to `DD/MM/YYYY` (adds slashes dynamically). Letters and symbols are blocked.
+   * **Rule**: Checks for valid dates, blocks future dates of birth, and limits ages between 0 and 120 years.
+4. **Name Fields**:
+   * **Rule**: Allows only alphabets, spaces, dots `.`, and hyphens `-`. Numbers and other special characters are blocked.
+5. **Code Fields**:
+   * **Rule**: Uppercase only. Restricts typing to uppercase letters, numbers, hyphens `-`, and underscores `_`.
+6. **Premium & Amounts**:
+   * **Rule**: Positive numbers only. Permits decimals up to 2 places. Commas are blocked.
+7. **Clean Space Trimming**:
+   * All forms automatically trim leading and trailing spaces, and reduce double spaces inside text fields to a single space before saving.
+
+> [!WARNING]
+> If a validation fails on save, the system blocks the database commit, overlays red borders on the invalid fields, displays an error message, and automatically focuses your keyboard cursor on the first invalid field.
+
+### ⌨️ Keyboard Navigation Shortcuts
+
+You can drive operations much faster by using these hardware shortcut bindings:
+
+#### 1. F1–F12 Sidebar Page Navigation
+Press these keys to switch screens instantly:
+* **F1**: Dashboard
+* **F2**: Proposer Register
+* **F3**: Policy Register
+* **F4**: SR Recruitment
+* **F5**: SM Recruitment
+* **F6**: SSM Recruitment
+* **F7**: Area Manager
+* **F8**: Show Team
+* **F9**: Business Figure
+* **F10**: Notifications
+* **F11**: Settings
+* **F12**: Users (developer only)
+
+#### 2. Ctrl + N Context-Aware Modals
+* Press **Ctrl + N** on any of the management screens (F2 through F7) to immediately trigger and pop open the "Add New" creation form overlay.
+
+---
+
+## 4. The Executive Dashboard
 
 Upon logging in, the **Executive Dashboard** provides an immediate overview of business metrics.
 
@@ -67,7 +118,7 @@ Upon logging in, the **Executive Dashboard** provides an immediate overview of b
 
 ---
 
-## 4. Managing the Sales Organization Hierarchy
+## 5. Managing the Sales Organization Hierarchy
 
 Nexus ERP models the standard hierarchical structure of an insurance sales force:
 
@@ -103,7 +154,7 @@ When registering or updating personnel, fill in the following details:
 
 ---
 
-## 5. Client & Proposal Registration
+## 6. Client & Proposal Registration
 
 Before issuing a policy, you register the client details and their initial insurance proposal.
 
@@ -119,7 +170,7 @@ Before issuing a policy, you register the client details and their initial insur
 
 ---
 
-## 6. Policy Management & Premium Calculations
+## 7. Policy Management & Premium Calculations
 
 The **Policy Register** is the primary module for managing live insurance plans.
 
@@ -150,7 +201,7 @@ The system automatically performs calculations based on these formulas:
 
 ---
 
-## 7. Analytics & Generating Reports
+## 8. Analytics & Generating Reports
 
 Nexus ERP provides advanced analytics and sharing tools.
 
@@ -168,7 +219,7 @@ Nexus ERP provides advanced analytics and sharing tools.
 
 ---
 
-## 8. Data Backup, Restore, and System Reset
+## 9. Data Backup, Restore, and System Reset
 
 Maintain data integrity using the utilities found in **Settings** under the **Developer System Operations** block:
 
@@ -186,14 +237,24 @@ Maintain data integrity using the utilities found in **Settings** under the **De
 
 ---
 
-## 9. Licensing & Renewal Workflow
+## 10. Licensing & Renewal Workflow
 
-To protect the software from unauthorized redistribution, Nexus ERP uses a machine-bound license.
+To protect the software from unauthorized redistribution, Nexus ERP uses a secure, machine-bound licensing model.
 
-### 🕒 Expiration Warnings
-* The license is active for 365 days from activation.
-* **Warning Banner**: When the remaining license duration falls below 30 days, a warning banner appears at the top of the interface showing the remaining days.
-* **Expiration Lock**: When the counter reaches 0 days, the main interface is hidden and replaced by a fullscreen **License Expiration** page.
+### 🕒 Expiration & Security Safeguards
+
+1. **3-Day Trial Version**:
+   * A clean installation begins as a 3-day Trial. The countdown triggers strictly upon the first successful login of any administrative or operator profile.
+2. **System Clock Tampering Lockout**:
+   * If the host computer's system clock is rolled back/manipulated backwards by more than 5 minutes, the application suspends workspace access and displays a fullscreen alert: *"System date manipulation detected. Please correct your system date."* Correcting the clock resolves this block instantly.
+3. **Multi-Location Redundant Backups**:
+   * Licensing configuration is dynamically synchronized between (1) AppData, (2) User Home directory settings, and (3) the local SQLite Database `Config` table. If files are deleted or tampered with, they are auto-healed from the remaining location backups.
+4. **Carry-Forward Expiry Renewal**:
+   * When you renew or upgrade the license before the current key expires, any remaining active days are added onto your new license length (carried forward) instead of being lost.
+
+### 🕒 Expiration Warnings & Lockout
+* **Warning Banner**: When the remaining active license falls to 30 days or less, a top banner shows the countdown to keep you informed.
+* **Expiration Lock**: When remaining days reach 0, the main interface is locked out and replaced by a fullscreen **License Expiration** page.
 
 ### 🔄 License Renewal Steps
 
@@ -201,16 +262,18 @@ To protect the software from unauthorized redistribution, Nexus ERP uses a machi
 graph TD
     A[License Expires / Lock Screen Appears] --> B[Copy Unique Machine ID from screen]
     B --> C[Send Machine ID to Lalwani Software Solutions]
-    C --> D[Developer generates Activation Key]
+    C --> D[Developer generates Activation Key with custom duration/type]
     D --> E[Paste Activation Key in input box]
     E --> F[Click Activate License]
-    F --> G[System validates key & unlocks for +365 days]
-> Note: Standard user support is detailed below.
+    F --> G[System validates key, carries forward remaining days & unlocks]
 ```
+> Note: Standard user support is detailed below.
 
 1. **Copy the Machine ID**: Click the **Copy** button next to the **Unique Machine ID** on the renewal screen.
 2. **Request Activation**: Send the copied ID to Lalwani Software Solutions via the settings contact card or support channels.
 3. **Apply Key**: Once you receive the cryptographically signed key, paste it into the **Renewal Key** text field and click **Activate License**.
+
+---
 
 ### 📞 Developer & Support Contacts
 

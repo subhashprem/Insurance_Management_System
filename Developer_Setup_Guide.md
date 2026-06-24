@@ -44,6 +44,28 @@ When running the application for the first time, a local database is generated a
 
 ---
 
+## 🔑 License Key Generation (For Developers)
+
+To activate or renew client installations, run the built-in cryptographic key generator script:
+```bash
+node keygen.js <Machine-ID> [licenseType] [durationDays]
+```
+* **Parameters**:
+  - `Machine-ID`: The client's unique machine ID copied from their settings page or renewal modal.
+  - `licenseType` (optional): The license tier/type, e.g., `full`, `trial`, `enterprise`. Defaults to `full`.
+  - `durationDays` (optional): Active license validity duration. Defaults to `365` (1 year).
+* **Examples**:
+  - Generate a standard 1-year full license key:
+    ```bash
+    node keygen.js e3d238b9-8e7c-473d-82d2-83b4fa81729b
+    ```
+  - Generate a 30-day trial license key:
+    ```bash
+    node keygen.js e3d238b9-8e7c-473d-82d2-83b4fa81729b trial 30
+    ```
+
+---
+
 ## 📦 Packaging Workflow (Pure UI)
 
 To ship a pre-seeded installer to a client with their credentials pre-loaded:

@@ -75,8 +75,8 @@ function decryptObject(text) {
 /**
  * Generate a machine-bound license key
  */
-function generateLicenseKey(machineId, installTimestamp, salt = 'LIC_SALT_DEV_2026') {
-  const input = `${machineId}|${installTimestamp}|${salt}`;
+function generateLicenseKey(machineId, installTimestamp, licenseType = 'full', durationDays = 365, salt = 'LIC_SALT_DEV_2026') {
+  const input = `${machineId}|${installTimestamp}|${licenseType}|${durationDays}|${salt}`;
   return encrypt(input);
 }
 
@@ -86,13 +86,27 @@ function generateLicenseKey(machineId, installTimestamp, salt = 'LIC_SALT_DEV_20
 function validateRenewalKey(keyInput, machineId, salt = 'LIC_SALT_DEV_2026') {
   try {
     const decoded = decrypt(keyInput);
-    if (decoded === 'DATA_ERROR') return false;
+    if (decoded === 'DATA_ERROR') return null;
     const parts = decoded.split('|');
-    if (parts.length < 2) return false;
-    return parts[0] === machineId;
+    if (parts.length < 2) return null;
+    if (parts[0] !== machineId) return null;
+
+    let licenseType = 'full';
+    let durationDays = 365;
+    if (parts.length >= 5) {
+      licenseType = parts[2];
+      durationDays = parseInt(parts[3], 10) || 365;
+    }
+    return {
+      machineId: parts[0],
+      timestamp: parseInt(parts[1], 10),
+      licenseType,
+      durationDays
+    };
   } catch {
-    return false;
+    return null;
   }
 }
 
 module.exports = { encrypt, decrypt, encryptObject, decryptObject, generateLicenseKey, validateRenewalKey };
+

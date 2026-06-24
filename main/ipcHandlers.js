@@ -7,7 +7,7 @@ const bcrypt = require('bcrypt');
 const { getDb, decryptRow, seedSampleData, closeDb }  = require('./database');
 const { encrypt, decrypt }   = require('./crypto');
 const { getLogger }          = require('./logger');
-const { checkLicense, renewLicense, openWhatsAppAlert, sendNewUserCredentialsEmail } = require('./licenseManager');
+const { checkLicense, renewLicense, openWhatsAppAlert, sendNewUserCredentialsEmail, getConfig } = require('./licenseManager');
 
 function formatDbDate(dateStr) {
   if (!dateStr) return '';
@@ -30,6 +30,343 @@ const ENC = {
 };
 
 function log() { return getLogger(); }
+
+/* ──────────────────────────── VALIDATION HELPERS ──────────────────────────── */
+function validateCnic(val) {
+  if (!val) return false;
+  const digits = val.replace(/-/g, '');
+  return /^\d{13}$/.test(digits) && /^\d{5}-\d{7}-\d{1}$/.test(val);
+}
+
+function validatePhone(val) {
+  if (!val) return true; // Phone contact can be optional
+  return /^\d{11,12}$/.test(val);
+}
+
+function validateDate(val) {
+  if (!val) return true; // Optional date fields
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) return false;
+  const t = Date.parse(val);
+  return !isNaN(t);
+}
+
+function validateDOBAge(dob) {
+  if (!dob) return true;
+  if (!validateDate(dob)) return false;
+  const birth = new Date(dob);
+  const today = new Date();
+  if (birth > today) return false;
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age >= 0 && age <= 120;
+}
+
+function validateName(val) {
+  if (!val) return false;
+  return /^[A-Za-z\s.\-]+$/.test(val);
+}
+
+function validateCode(val) {
+  if (!val) return false;
+  return /^[A-Z0-9\-_]+$/.test(val);
+}
+
+function validateAmount(val) {
+  if (val === undefined || val === null || val === '') return false;
+  const numStr = String(val);
+  if (!/^\d+(\.\d{1,2})?$/.test(numStr)) return false;
+  const num = parseFloat(numStr);
+  return num >= 0;
+}
+
+function isDuplicateEncrypted(table, column, value, excludeId = null) {
+  if (!value) return false;
+  const db = getDb();
+  const rows = db.prepare(`SELECT id, ${column} FROM ${table}`).all();
+  for (const row of rows) {
+    if (excludeId !== null && row.id === excludeId) continue;
+    const decryptedValue = decrypt(row[column]);
+    if (decryptedValue && decryptedValue.trim().toLowerCase() === value.trim().toLowerCase()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isDuplicatePlain(table, column, value, excludeId = null) {
+  if (!value) return false;
+  const db = getDb();
+  let sql = `SELECT id FROM ${table} WHERE LOWER(${column}) = ?`;
+  const params = [value.trim().toLowerCase()];
+  if (excludeId !== null) {
+    sql += ` AND id != ?`;
+    params.push(excludeId);
+  }
+  const row = db.prepare(sql).get(...params);
+  return !!row;
+}
+
+function validateAreaManager(data, id = null) {
+  data.am_code = (data.am_code || '').trim().toUpperCase();
+  data.am_name = (data.am_name || '').trim().replace(/\s+/g, ' ');
+  data.cnic = (data.cnic || '').trim();
+  data.contact_1 = (data.contact_1 || '').trim();
+  data.contact_2 = (data.contact_2 || '').trim();
+  data.relation = (data.relation || '').trim().replace(/\s+/g, ' ');
+  data.registration_no = (data.registration_no || '').trim().toUpperCase();
+
+  if (!data.am_code || !data.am_name || !data.cnic) {
+    return { ok: false, error: '⚠ Required Field Missing' };
+  }
+  if (!validateCode(data.am_code)) {
+    return { ok: false, error: '⚠ Invalid AM Code' };
+  }
+  if (!validateName(data.am_name)) {
+    return { ok: false, error: '⚠ Invalid Name' };
+  }
+  if (!validateCnic(data.cnic)) {
+    return { ok: false, error: '⚠ Invalid CNIC' };
+  }
+  if (!validatePhone(data.contact_1) || !validatePhone(data.contact_2)) {
+    return { ok: false, error: '⚠ Invalid Phone Number' };
+  }
+  if (!validateDOBAge(data.dob)) {
+    return { ok: false, error: '⚠ Invalid Date' };
+  }
+  if (data.registration_date && !validateDate(data.registration_date)) {
+    return { ok: false, error: '⚠ Invalid Date' };
+  }
+
+  if (isDuplicatePlain('Area_Managers', 'am_code', data.am_code, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+  if (isDuplicateEncrypted('Area_Managers', 'cnic', data.cnic, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+  if (data.registration_no && isDuplicateEncrypted('Area_Managers', 'registration_no', data.registration_no, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+
+  return { ok: true };
+}
+
+function validateSSM(data, id = null) {
+  data.ssm_code = (data.ssm_code || '').trim().toUpperCase();
+  data.ssm_name = (data.ssm_name || '').trim().replace(/\s+/g, ' ');
+  data.cnic = (data.cnic || '').trim();
+  data.contact_1 = (data.contact_1 || '').trim();
+  data.contact_2 = (data.contact_2 || '').trim();
+  data.relation = (data.relation || '').trim().replace(/\s+/g, ' ');
+  data.registration_no = (data.registration_no || '').trim().toUpperCase();
+
+  if (!data.ssm_code || !data.ssm_name || !data.cnic) {
+    return { ok: false, error: '⚠ Required Field Missing' };
+  }
+  if (!validateCode(data.ssm_code)) {
+    return { ok: false, error: '⚠ Invalid SSM Code' };
+  }
+  if (!validateName(data.ssm_name)) {
+    return { ok: false, error: '⚠ Invalid Name' };
+  }
+  if (!validateCnic(data.cnic)) {
+    return { ok: false, error: '⚠ Invalid CNIC' };
+  }
+  if (!validatePhone(data.contact_1) || !validatePhone(data.contact_2)) {
+    return { ok: false, error: '⚠ Invalid Phone Number' };
+  }
+  if (!validateDOBAge(data.dob)) {
+    return { ok: false, error: '⚠ Invalid Date' };
+  }
+  if (data.registration_date && !validateDate(data.registration_date)) {
+    return { ok: false, error: '⚠ Invalid Date' };
+  }
+
+  if (isDuplicatePlain('SSM', 'ssm_code', data.ssm_code, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+  if (isDuplicateEncrypted('SSM', 'cnic', data.cnic, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+  if (data.registration_no && isDuplicateEncrypted('SSM', 'registration_no', data.registration_no, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+
+  return { ok: true };
+}
+
+function validateSM(data, id = null) {
+  data.sm_code = (data.sm_code || '').trim().toUpperCase();
+  data.sm_name = (data.sm_name || '').trim().replace(/\s+/g, ' ');
+  data.cnic = (data.cnic || '').trim();
+  data.contact_1 = (data.contact_1 || '').trim();
+  data.contact_2 = (data.contact_2 || '').trim();
+  data.relation = (data.relation || '').trim().replace(/\s+/g, ' ');
+  data.registration_no = (data.registration_no || '').trim().toUpperCase();
+
+  if (!data.sm_code || !data.sm_name || !data.cnic) {
+    return { ok: false, error: '⚠ Required Field Missing' };
+  }
+  if (!validateCode(data.sm_code)) {
+    return { ok: false, error: '⚠ Invalid SM Code' };
+  }
+  if (!validateName(data.sm_name)) {
+    return { ok: false, error: '⚠ Invalid Name' };
+  }
+  if (!validateCnic(data.cnic)) {
+    return { ok: false, error: '⚠ Invalid CNIC' };
+  }
+  if (!validatePhone(data.contact_1) || !validatePhone(data.contact_2)) {
+    return { ok: false, error: '⚠ Invalid Phone Number' };
+  }
+  if (!validateDOBAge(data.dob)) {
+    return { ok: false, error: '⚠ Invalid Date' };
+  }
+  if (data.registration_date && !validateDate(data.registration_date)) {
+    return { ok: false, error: '⚠ Invalid Date' };
+  }
+
+  if (isDuplicatePlain('SM', 'sm_code', data.sm_code, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+  if (isDuplicateEncrypted('SM', 'cnic', data.cnic, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+  if (data.registration_no && isDuplicateEncrypted('SM', 'registration_no', data.registration_no, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+
+  return { ok: true };
+}
+
+function validateSR(data, id = null) {
+  data.sr_code = (data.sr_code || '').trim().toUpperCase();
+  data.sr_name = (data.sr_name || '').trim().replace(/\s+/g, ' ');
+  data.cnic = (data.cnic || '').trim();
+  data.contact_1 = (data.contact_1 || '').trim();
+  data.contact_2 = (data.contact_2 || '').trim();
+  data.relation = (data.relation || '').trim().replace(/\s+/g, ' ');
+  data.registration_no = (data.registration_no || '').trim().toUpperCase();
+
+  if (!data.sr_code || !data.sr_name || !data.cnic) {
+    return { ok: false, error: '⚠ Required Field Missing' };
+  }
+  if (!validateCode(data.sr_code)) {
+    return { ok: false, error: '⚠ Invalid SR Code' };
+  }
+  if (!validateName(data.sr_name)) {
+    return { ok: false, error: '⚠ Invalid Name' };
+  }
+  if (!validateCnic(data.cnic)) {
+    return { ok: false, error: '⚠ Invalid CNIC' };
+  }
+  if (!validatePhone(data.contact_1) || !validatePhone(data.contact_2)) {
+    return { ok: false, error: '⚠ Invalid Phone Number' };
+  }
+  if (!validateDOBAge(data.dob)) {
+    return { ok: false, error: '⚠ Invalid Date' };
+  }
+  if (data.registration_date && !validateDate(data.registration_date)) {
+    return { ok: false, error: '⚠ Invalid Date' };
+  }
+
+  if (isDuplicatePlain('SR', 'sr_code', data.sr_code, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+  if (isDuplicateEncrypted('SR', 'cnic', data.cnic, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+  if (data.registration_no && isDuplicateEncrypted('SR', 'registration_no', data.registration_no, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+
+  return { ok: true };
+}
+
+function validateProposer(data, id = null) {
+  data.proposal_no = (data.proposal_no || '').trim().toUpperCase();
+  data.holder_name = (data.holder_name || '').trim().replace(/\s+/g, ' ');
+  data.contact_1 = (data.contact_1 || '').trim();
+  data.contact_2 = (data.contact_2 || '').trim();
+  data.pr_no = (data.pr_no || '').trim().toUpperCase();
+
+  if (!data.proposal_no || !data.holder_name || data.premium === undefined || data.premium === null || data.premium === '') {
+    return { ok: false, error: '⚠ Required Field Missing' };
+  }
+  if (!validateCode(data.proposal_no)) {
+    return { ok: false, error: '⚠ Invalid Proposal Number' };
+  }
+  if (!validateName(data.holder_name)) {
+    return { ok: false, error: '⚠ Invalid Name' };
+  }
+  if (!validatePhone(data.contact_1) || !validatePhone(data.contact_2)) {
+    return { ok: false, error: '⚠ Invalid Phone Number' };
+  }
+  if (data.pr_no && !validateCode(data.pr_no)) {
+    return { ok: false, error: '⚠ Invalid PR Number' };
+  }
+  if (data.pr_date && !validateDate(data.pr_date)) {
+    return { ok: false, error: '⚠ Invalid Date' };
+  }
+  if (!validateAmount(data.premium)) {
+    return { ok: false, error: '⚠ Invalid Premium / Amount' };
+  }
+
+  if (isDuplicatePlain('Proposer_Register', 'proposal_no', data.proposal_no, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+
+  return { ok: true };
+}
+
+function validatePolicy(data, id = null) {
+  data.policy_no = (data.policy_no || '').trim().toUpperCase();
+  data.holder_name = (data.holder_name || '').trim().replace(/\s+/g, ' ');
+  data.cnic = (data.cnic || '').trim();
+  data.contact_1 = (data.contact_1 || '').trim();
+  data.contact_2 = (data.contact_2 || '').trim();
+  data.relation = (data.relation || '').trim().replace(/\s+/g, ' ');
+
+  if (!data.policy_no || !data.holder_name || !data.cnic || data.premium === undefined || data.premium === null || data.premium === '' || !data.issue_date) {
+    return { ok: false, error: '⚠ Required Field Missing' };
+  }
+  if (!validateCode(data.policy_no)) {
+    return { ok: false, error: '⚠ Invalid Policy Number' };
+  }
+  if (!validateName(data.holder_name)) {
+    return { ok: false, error: '⚠ Invalid Name' };
+  }
+  if (!validateCnic(data.cnic)) {
+    return { ok: false, error: '⚠ Invalid CNIC' };
+  }
+  if (!validatePhone(data.contact_1) || !validatePhone(data.contact_2)) {
+    return { ok: false, error: '⚠ Invalid Phone Number' };
+  }
+  if (!validateDOBAge(data.dob)) {
+    return { ok: false, error: '⚠ Invalid Date' };
+  }
+  if (!validateDate(data.issue_date)) {
+    return { ok: false, error: '⚠ Invalid Date' };
+  }
+  if (data.due_date && !validateDate(data.due_date)) {
+    return { ok: false, error: '⚠ Invalid Date' };
+  }
+  if (data.last_paid_date && !validateDate(data.last_paid_date)) {
+    return { ok: false, error: '⚠ Invalid Date' };
+  }
+  if (!validateAmount(data.premium)) {
+    return { ok: false, error: '⚠ Invalid Premium / Amount' };
+  }
+
+  if (isDuplicateEncrypted('Policy_Register', 'policy_no', data.policy_no, id)) {
+    return { ok: false, error: '⚠ Duplicate Record Found' };
+  }
+
+  return { ok: true };
+}
+
 
 /* ──────────────────────────── AUTH ──────────────────────────── */
 function handleAuth() {
@@ -67,6 +404,38 @@ function handleLicense() {
   ipcMain.handle('license:check', () => checkLicense());
   ipcMain.handle('license:renew', (_e, key) => renewLicense(key));
   ipcMain.handle('license:openWhatsAppAlert', (_e, msg) => openWhatsAppAlert(msg));
+  ipcMain.handle('license:validateKey', (_e, keyInput) => {
+    try {
+      const { machineIdSync } = require('node-machine-id');
+      const machineId = machineIdSync({ original: true });
+      const { validateRenewalKey } = require('./crypto');
+      const config = getConfig() || {};
+      config.usedKeys = config.usedKeys || [];
+
+      if (config.usedKeys.includes(keyInput)) {
+        return { valid: false, error: 'License key has already been used.' };
+      }
+
+      const details = validateRenewalKey(keyInput, machineId);
+      if (!details) {
+        return { valid: false, error: 'Invalid license key for this machine.' };
+      }
+
+      // Carry forward logic simulation
+      const currentExpiry = config.expiryTs || 0;
+      const baseTs = Math.max(currentExpiry, Date.now());
+      const newExpiryTs = baseTs + (details.durationDays * 24 * 60 * 60 * 1000);
+
+      return {
+        valid: true,
+        licenseType: details.licenseType,
+        durationDays: details.durationDays,
+        newExpiryTs
+      };
+    } catch (err) {
+      return { valid: false, error: err.message };
+    }
+  });
 }
 
 /* ──────────────────────────── USERS ──────────────────────────── */
@@ -181,6 +550,8 @@ function handleAreaManagers() {
 
   ipcMain.handle('am:create', (_e, data) => {
     const db = getDb();
+    const val = validateAreaManager(data);
+    if (!val.ok) return val;
     try {
       db.prepare('INSERT INTO Area_Managers (am_code,am_name,address,cnic,contact_1,contact_2,status,relation,registration_no,registration_date,dob) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
         .run(data.am_code, encrypt(data.am_name), encrypt(data.address), encrypt(data.cnic), encrypt(data.contact_1), encrypt(data.contact_2), data.status || 'active', encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.dob || null);
@@ -191,6 +562,8 @@ function handleAreaManagers() {
 
   ipcMain.handle('am:update', (_e, data) => {
     const db = getDb();
+    const val = validateAreaManager(data, data.id);
+    if (!val.ok) return val;
     try {
       db.prepare('UPDATE Area_Managers SET am_code=?,am_name=?,address=?,cnic=?,contact_1=?,contact_2=?,status=?,relation=?,registration_no=?,registration_date=?,dob=? WHERE id=?')
         .run(data.am_code, encrypt(data.am_name), encrypt(data.address), encrypt(data.cnic), encrypt(data.contact_1), encrypt(data.contact_2), data.status, encrypt(data.relation || ''), encrypt(data.registration_no || ''), data.registration_date || null, data.dob || null, data.id);
@@ -233,6 +606,8 @@ function handleSSM() {
 
   ipcMain.handle('ssm:create', (_e, data) => {
     const db = getDb();
+    const val = validateSSM(data);
+    if (!val.ok) return val;
     try {
       db.prepare(`INSERT INTO SSM (ssm_code,ssm_name,address,cnic,contact_1,contact_2,am_id,status,cnic_pic,nominee_cnic_pic,matric_cert,intermediate_cert,degree_cert,relation,registration_no,registration_date,passport_pic,dob)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
@@ -245,6 +620,8 @@ function handleSSM() {
 
   ipcMain.handle('ssm:update', (_e, data) => {
     const db = getDb();
+    const val = validateSSM(data, data.id);
+    if (!val.ok) return val;
     try {
       db.prepare(`UPDATE SSM SET ssm_code=?,ssm_name=?,address=?,cnic=?,contact_1=?,contact_2=?,am_id=?,status=?,
         cnic_pic=?,nominee_cnic_pic=?,matric_cert=?,intermediate_cert=?,degree_cert=?,relation=?,registration_no=?,registration_date=?,passport_pic=?,dob=? WHERE id=?`)
@@ -290,6 +667,8 @@ function handleSM() {
 
   ipcMain.handle('sm:create', (_e, data) => {
     const db = getDb();
+    const val = validateSM(data);
+    if (!val.ok) return val;
     try {
       db.prepare(`INSERT INTO SM (sm_code,sm_name,address,cnic,contact_1,contact_2,ssm_id,am_id,status,cnic_pic,nominee_cnic_pic,matric_cert,intermediate_cert,degree_cert,relation,registration_no,registration_date,passport_pic,dob)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
@@ -302,6 +681,8 @@ function handleSM() {
 
   ipcMain.handle('sm:update', (_e, data) => {
     const db = getDb();
+    const val = validateSM(data, data.id);
+    if (!val.ok) return val;
     try {
       db.prepare(`UPDATE SM SET sm_code=?,sm_name=?,address=?,cnic=?,contact_1=?,contact_2=?,ssm_id=?,am_id=?,status=?,
         cnic_pic=?,nominee_cnic_pic=?,matric_cert=?,intermediate_cert=?,degree_cert=?,relation=?,registration_no=?,registration_date=?,passport_pic=?,dob=? WHERE id=?`)
@@ -345,6 +726,8 @@ function handleSR() {
 
   ipcMain.handle('sr:create', (_e, data) => {
     const db = getDb();
+    const val = validateSR(data);
+    if (!val.ok) return val;
     try {
       db.prepare(`INSERT INTO SR (sr_code,sr_name,address,cnic,contact_1,contact_2,sm_id,ssm_id,am_id,status,cnic_pic,nominee_cnic_pic,matric_cert,intermediate_cert,degree_cert,relation,registration_no,registration_date,passport_pic,total_business,dob)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
@@ -357,6 +740,8 @@ function handleSR() {
 
   ipcMain.handle('sr:update', (_e, data) => {
     const db = getDb();
+    const val = validateSR(data, data.id);
+    if (!val.ok) return val;
     try {
       db.prepare(`UPDATE SR SET sr_code=?,sr_name=?,address=?,cnic=?,contact_1=?,contact_2=?,sm_id=?,ssm_id=?,am_id=?,status=?,
         cnic_pic=?,nominee_cnic_pic=?,matric_cert=?,intermediate_cert=?,degree_cert=?,relation=?,registration_no=?,registration_date=?,passport_pic=?,total_business=?,dob=? WHERE id=?`)
@@ -441,6 +826,8 @@ function handleProposer() {
 
   ipcMain.handle('proposer:create', (_e, data) => {
     const db = getDb();
+    const val = validateProposer(data);
+    if (!val.ok) return val;
     try {
       db.prepare(`INSERT INTO Proposer_Register (proposal_no,holder_name,premium,pr_no,pr_date,amount_type,requirements,sr_id,sm_id,ssm_id,status,contact_1,contact_2)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
@@ -452,6 +839,8 @@ function handleProposer() {
 
   ipcMain.handle('proposer:update', (_e, data) => {
     const db = getDb();
+    const val = validateProposer(data, data.id);
+    if (!val.ok) return val;
     try {
       db.prepare(`UPDATE Proposer_Register SET proposal_no=?,holder_name=?,premium=?,pr_no=?,pr_date=?,amount_type=?,requirements=?,sr_id=?,sm_id=?,ssm_id=?,status=?,contact_1=?,contact_2=? WHERE id=?`)
         .run(data.proposal_no, encrypt(data.holder_name), data.premium, encrypt(data.pr_no), data.pr_date, data.amount_type, data.requirements, data.sr_id || null, data.sm_id || null, data.ssm_id || null, data.status, encrypt(data.contact_1 || ''), encrypt(data.contact_2 || ''), data.id);
@@ -543,6 +932,8 @@ function handlePolicy() {
 
   ipcMain.handle('policy:create', (_e, data) => {
     const db = getDb();
+    const val = validatePolicy(data);
+    if (!val.ok) return val;
     try {
       db.prepare(`INSERT INTO Policy_Register (policy_no,holder_name,cnic,address,contact_1,contact_2,premium,issue_date,due_date,table_term,last_paid_date,sr_id,sm_id,ssm_id,proposal_id,relation,dob)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
@@ -557,6 +948,8 @@ function handlePolicy() {
 
   ipcMain.handle('policy:update', (_e, data) => {
     const db  = getDb();
+    const val = validatePolicy(data, data.id);
+    if (!val.ok) return val;
     const old = db.prepare('SELECT last_paid_date, sr_id, sm_id, ssm_id, premium FROM Policy_Register WHERE id=?').get(data.id);
     try {
       db.prepare(`UPDATE Policy_Register SET policy_no=?,holder_name=?,cnic=?,address=?,contact_1=?,contact_2=?,premium=?,issue_date=?,due_date=?,table_term=?,last_paid_date=?,previous_paid_date=?,sr_id=?,sm_id=?,ssm_id=?,relation=?,dob=? WHERE id=?`)
@@ -1209,7 +1602,7 @@ function handlePdfGenerators() {
       
       // Draw Contact Info below
       doc.fillColor('#666666').fontSize(9).font('Helvetica');
-      const contactText = 'Contact : 03337104578 / 03362711086';
+      const contactText = 'Contact : 03337104578 / 03152967527';
       const contactWidth = doc.widthOfString(contactText);
       doc.text(contactText, (doc.page.width - contactWidth) / 2, footerY + 14);
       
@@ -1369,7 +1762,7 @@ function handlePdfGenerators() {
       
       // Draw Contact Info below
       doc.fillColor('#666666').fontSize(9).font('Helvetica');
-      const contactText = 'Contact : 03337104578 / 03362711086';
+      const contactText = 'Contact : 03337104578 / 03152967527';
       const contactWidth = doc.widthOfString(contactText);
       doc.text(contactText, (doc.page.width - contactWidth) / 2, footerY + 14);
       

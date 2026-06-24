@@ -127,13 +127,53 @@ export default function BusinessFigure() {
 
   const handleExportExcel = async () => {
     toast('Generating Excel performance report...', 'info');
-    const res = await api.exportBusinessExcel({ from: toDbDate(from), to: toDbDate(to), role, data: displayRows });
-    if (res?.ok) {
-      toast(`Excel saved to: ${res.path}`, 'success');
-    } else if (res?.ok === false && res?.canceled) {
-      toast('Export cancelled', 'info');
-    } else {
-      toast(res?.error || 'Excel export failed', 'error');
+    try {
+      const dbFrom = toDbDate(from);
+      const dbTo = toDbDate(to);
+      let latestData;
+      if (role === 'SR') latestData = await api.srFigure({ from: dbFrom, to: dbTo });
+      else if (role === 'SM') latestData = await api.smFigure({ from: dbFrom, to: dbTo });
+      else if (role === 'SSM') latestData = await api.ssmFigure({ from: dbFrom, to: dbTo });
+      else latestData = await api.amFigure({ from: dbFrom, to: dbTo });
+
+      const latestFiltered = (latestData || []).filter(r => {
+        if (!search) return true;
+        const name = r.sr_name || r.sm_name || r.ssm_name || r.am_name || '';
+        const code = r.sr_code || r.sm_code || r.ssm_code || r.am_code || '';
+        return name.toLowerCase().includes(search.toLowerCase()) || code.toLowerCase().includes(search.toLowerCase());
+      });
+
+      const grandTotal = latestFiltered.reduce((acc, r) => ({
+        total_business: acc.total_business + (r.total_business || 0),
+        no_of_policies: acc.no_of_policies + (r.no_of_policies || 0),
+        second_year_premium: acc.second_year_premium + (r.second_year_premium || 0),
+      }), { total_business: 0, no_of_policies: 0, second_year_premium: 0 });
+
+      const latestDisplayRows = latestFiltered.length ? [
+        ...latestFiltered,
+        {
+          id: '__grand__',
+          sr_code: '', sm_code: '', ssm_code: '', am_code: '',
+          sr_name: 'GRAND TOTAL', sm_name: 'GRAND TOTAL', ssm_name: 'GRAND TOTAL', am_name: 'GRAND TOTAL',
+          ssm_code_ref: '', sm_code_ref: '',
+          total_business: grandTotal.total_business,
+          no_of_policies: grandTotal.no_of_policies,
+          no_of_srs_added: '', no_of_sms_added: '', no_of_ssms_added: '',
+          second_year_premium: grandTotal.second_year_premium,
+        }
+      ] : [];
+
+      const res = await api.exportBusinessExcel({ from: dbFrom, to: dbTo, role, data: latestDisplayRows });
+      setRows(latestData || []);
+      if (res?.ok) {
+        toast(`Excel saved to: ${res.path}`, 'success');
+      } else if (res?.ok === false && res?.canceled) {
+        toast('Export cancelled', 'info');
+      } else {
+        toast(res?.error || 'Excel export failed', 'error');
+      }
+    } catch {
+      toast('Excel export failed', 'error');
     }
   };
 

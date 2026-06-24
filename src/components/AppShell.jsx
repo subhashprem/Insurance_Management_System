@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useState, useEffect } from 'react';
 import Sidebar from './Sidebar.jsx';
 import api from '../lib/api.js';
 import { useToast } from './Toast.jsx';
+import LicenseRenewalModal from './LicenseRenewalModal.jsx';
 
 const Dashboard = lazy(() => import('../pages/Dashboard.jsx'));
 const ProposerRegister = lazy(() => import('../pages/ProposerRegister.jsx'));
@@ -37,7 +38,7 @@ const Spinner = () => (
   </div>
 );
 
-export default function AppShell({ user, licenseInfo, activePage, onNavigate, onLogout, onProfileUpdate }) {
+export default function AppShell({ user, licenseInfo, onLicenseUpdated, activePage, onNavigate, onLogout, onProfileUpdate }) {
   const toast = useToast();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -46,6 +47,13 @@ export default function AppShell({ user, licenseInfo, activePage, onNavigate, on
   const [searchFilter, setSearchFilter] = useState('');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [notifCount, setNotifCount] = useState(0);
+  const [renewalOpen, setRenewalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleRenewalTrigger = () => setRenewalOpen(true);
+    window.addEventListener('trigger-license-renewal', handleRenewalTrigger);
+    return () => window.removeEventListener('trigger-license-renewal', handleRenewalTrigger);
+  }, []);
 
   useEffect(() => {
     api.notificationCount().then(c => setNotifCount(c || 0)).catch(() => { });
@@ -58,9 +66,17 @@ export default function AppShell({ user, licenseInfo, activePage, onNavigate, on
     }
   }, [licenseInfo, toast, user]);
 
-  // Global F1-F12 tab navigation shortcuts
+  // Global F1-F12 tab navigation shortcuts & Ctrl + N context-aware handler
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Ctrl + N handler
+      if (e.ctrlKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        const event = new CustomEvent('trigger-add-new', { detail: { page: activePage } });
+        window.dispatchEvent(event);
+        return;
+      }
+
       const match = e.key.match(/^F(\d+)$/);
       if (match) {
         const num = parseInt(match[1], 10);
@@ -91,7 +107,7 @@ export default function AppShell({ user, licenseInfo, activePage, onNavigate, on
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [user, onNavigate]);
+  }, [user, onNavigate, activePage]);
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -320,10 +336,7 @@ export default function AppShell({ user, licenseInfo, activePage, onNavigate, on
 
         {/* License warning banner */}
         {showBanner && (
-          <div className={`${isUrgent
-            ? 'bg-crimson-red text-white'
-            : 'bg-vivid-orange text-deep-charcoal'
-            } px-6 py-2.5 flex items-center justify-center gap-3 text-body-md select-none shrink-0 border-b border-black/10`}>
+          <div className="bg-crimson-red text-white px-6 py-2.5 flex items-center justify-center gap-3 text-body-md select-none shrink-0 border-b border-black/10">
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
               {isUrgent ? 'error' : 'warning'}
             </span>
@@ -362,11 +375,22 @@ export default function AppShell({ user, licenseInfo, activePage, onNavigate, on
                 onProfileUpdate={onProfileUpdate}
                 searchFilter={searchFilter}
                 clearSearchFilter={() => setSearchFilter('')}
+                licenseInfo={licenseInfo}
+                onLicenseUpdated={onLicenseUpdated}
               />
             </Suspense>
           </div>
         </main>
       </div>
+
+      {/* License Renewal Modal popup overlay */}
+      <LicenseRenewalModal
+        open={renewalOpen}
+        onClose={() => setRenewalOpen(false)}
+        licenseInfo={licenseInfo}
+        onLicenseUpdated={onLicenseUpdated}
+        user={user}
+      />
 
       {/* Atmospheric BG effect */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">

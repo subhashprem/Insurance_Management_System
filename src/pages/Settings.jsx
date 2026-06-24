@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { useToast } from '../components/Toast.jsx';
 import api from '../lib/api.js';
 
-export default function Settings({ user, onProfileUpdate }) {
+export default function Settings({ user, onProfileUpdate, licenseInfo }) {
   const toast = useToast();
-  const [profile,   setProfile]   = useState({ name: user?.name || '', username: user?.username || '' });
-  const [pwdForm,   setPwdForm]   = useState({ currentPassword:'', newPassword:'', confirmPassword:'' });
-  const [savingP,   setSavingP]   = useState(false);
+  const [profile, setProfile] = useState({ name: user?.name || '', username: user?.username || '' });
+  const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [savingP, setSavingP] = useState(false);
   const [savingPwd, setSavingPwd] = useState(false);
   const [pwdErrors, setPwdErrors] = useState({});
-  const [showPwd,   setShowPwd]   = useState({ curr:false, new:false, confirm:false });
+  const [showPwd, setShowPwd] = useState({ curr: false, new: false, confirm: false });
   const [packaging, setPackaging] = useState(false);
 
   const handlePackageApp = async () => {
@@ -34,40 +34,40 @@ export default function Settings({ user, onProfileUpdate }) {
 
   const handleSaveProfile = async () => {
     if (!profile.name.trim() || !profile.username.trim()) {
-      toast('Name and username are required','error'); return;
+      toast('Name and username are required', 'error'); return;
     }
     setSavingP(true);
     try {
       const res = await api.updateProfile({ id: user.id, name: profile.name.trim(), username: profile.username.trim() });
       if (res.ok) {
-        toast('Profile updated successfully','success');
+        toast('Profile updated successfully', 'success');
         onProfileUpdate?.({ name: profile.name.trim(), username: profile.username.trim() });
-      } else toast(res.error || 'Update failed','error');
+      } else toast(res.error || 'Update failed', 'error');
     } finally { setSavingP(false); }
   };
 
   const handleChangePassword = async () => {
     const e = {};
-    if (!pwdForm.currentPassword)   e.currentPassword   = 'Required';
-    if (!pwdForm.newPassword)        e.newPassword        = 'Required';
-    if (pwdForm.newPassword.length < 6) e.newPassword    = 'Minimum 6 characters';
+    if (!pwdForm.currentPassword) e.currentPassword = 'Required';
+    if (!pwdForm.newPassword) e.newPassword = 'Required';
+    if (pwdForm.newPassword.length < 6) e.newPassword = 'Minimum 6 characters';
     if (pwdForm.newPassword !== pwdForm.confirmPassword) e.confirmPassword = 'Passwords do not match';
     if (Object.keys(e).length) { setPwdErrors(e); return; }
     setSavingPwd(true);
     try {
       const res = await api.changePassword({ id: user.id, currentPassword: pwdForm.currentPassword, newPassword: pwdForm.newPassword });
       if (res.ok) {
-        toast('Password changed successfully','success');
-        setPwdForm({ currentPassword:'', newPassword:'', confirmPassword:'' });
+        toast('Password changed successfully', 'success');
+        setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
         setPwdErrors({});
       } else {
-        toast(res.error || 'Failed to change password','error');
+        toast(res.error || 'Failed to change password', 'error');
       }
     } finally { setSavingPwd(false); }
   };
 
   const toggle = (k) => setShowPwd(v => ({ ...v, [k]: !v[k] }));
-  const setPwd = (k, v) => { setPwdForm(f=>({...f,[k]:v})); setPwdErrors(e=>({...e,[k]:undefined})); };
+  const setPwd = (k, v) => { setPwdForm(f => ({ ...f, [k]: v })); setPwdErrors(e => ({ ...e, [k]: undefined })); };
 
   // Generate initials for avatar fallback
   const initials = user?.name
@@ -84,7 +84,7 @@ export default function Settings({ user, onProfileUpdate }) {
             <span className="text-label-caps font-label-caps text-primary uppercase tracking-wider font-bold">Profile Management</span>
             <span className="material-symbols-outlined text-outline text-[20px]">badge</span>
           </div>
-          
+
           <div className="p-6 flex flex-col md:flex-row gap-8">
             {/* Avatar Section */}
             <div className="flex flex-col items-center gap-3">
@@ -122,9 +122,8 @@ export default function Settings({ user, onProfileUpdate }) {
               </div>
               <div className="flex items-center gap-2 pt-2">
                 <span className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Terminal Role:</span>
-                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                  user?.role === 'developer' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-primary/10 text-primary border border-primary/20'
-                }`}>
+                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${user?.role === 'developer' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-primary/10 text-primary border border-primary/20'
+                  }`}>
                   {user?.role}
                 </span>
               </div>
@@ -158,9 +157,8 @@ export default function Settings({ user, onProfileUpdate }) {
                 <input
                   id="settings-currentPassword"
                   type={showPwd.curr ? 'text' : 'password'}
-                  className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2 pr-10 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all font-body-md text-sm ${
-                    pwdErrors.currentPassword ? 'border-error' : ''
-                  }`}
+                  className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2 pr-10 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all font-body-md text-sm ${pwdErrors.currentPassword ? 'border-error' : ''
+                    }`}
                   value={pwdForm.currentPassword}
                   onChange={e => setPwd('currentPassword', e.target.value)}
                 />
@@ -183,9 +181,8 @@ export default function Settings({ user, onProfileUpdate }) {
                 <input
                   id="settings-newPassword"
                   type={showPwd.new ? 'text' : 'password'}
-                  className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2 pr-10 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all font-body-md text-sm ${
-                    pwdErrors.newPassword ? 'border-error' : ''
-                  }`}
+                  className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2 pr-10 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all font-body-md text-sm ${pwdErrors.newPassword ? 'border-error' : ''
+                    }`}
                   value={pwdForm.newPassword}
                   onChange={e => setPwd('newPassword', e.target.value)}
                 />
@@ -208,9 +205,8 @@ export default function Settings({ user, onProfileUpdate }) {
                 <input
                   id="settings-confirmPassword"
                   type={showPwd.confirm ? 'text' : 'password'}
-                  className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2 pr-10 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all font-body-md text-sm ${
-                    pwdErrors.confirmPassword ? 'border-error' : ''
-                  }`}
+                  className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2 pr-10 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all font-body-md text-sm ${pwdErrors.confirmPassword ? 'border-error' : ''
+                    }`}
                   value={pwdForm.confirmPassword}
                   onChange={e => setPwd('confirmPassword', e.target.value)}
                 />
@@ -238,10 +234,10 @@ export default function Settings({ user, onProfileUpdate }) {
         </div>
       </div>
 
-      {/* Row 2: System Operations & Developer support */}
+      {/* Row 2: System Operations & License Management */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* System Operations & Data Integrity (Col 7) */}
-        <div className="lg:col-span-7 bg-surface-bright border border-border-subtle rounded-xl flex flex-col shadow-sm">
+        {/* System Operations & Data Integrity (Col 6) */}
+        <div className="lg:col-span-6 bg-surface-bright border border-border-subtle rounded-xl flex flex-col shadow-sm">
           <div className="h-12 px-6 flex items-center justify-between border-b border-border-subtle bg-surface-container-high/30">
             <span className="text-label-caps font-label-caps text-primary uppercase tracking-wider font-bold">System Operations & Data Integrity</span>
             <span className="material-symbols-outlined text-outline text-[20px]">database</span>
@@ -351,18 +347,66 @@ export default function Settings({ user, onProfileUpdate }) {
           </div>
         </div>
 
-        {/* Developer Contact Info (Col 5) */}
-        <div className="lg:col-span-5 bg-surface-bright border border-border-subtle rounded-xl flex flex-col shadow-sm">
+        {/* License Management Card (Col 6) */}
+        <div className="lg:col-span-6 bg-surface-bright border border-border-subtle rounded-xl flex flex-col shadow-sm">
+          <div className="h-12 px-6 flex items-center justify-between border-b border-border-subtle bg-surface-container-high/30">
+            <span className="text-label-caps font-label-caps text-primary uppercase tracking-wider font-bold">License Management</span>
+            <span className="material-symbols-outlined text-outline text-[20px]">vpn_key</span>
+          </div>
+          <div className="p-6 flex-grow flex flex-col justify-between gap-6">
+            <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
+              <div>
+                <span className="text-on-surface-variant opacity-70 block text-[10px] uppercase tracking-wider font-bold">Status</span>
+                <span className="text-on-surface text-sm uppercase font-bold mt-1 inline-block">{licenseInfo?.status || 'Unknown'}</span>
+              </div>
+              <div>
+                <span className="text-on-surface-variant opacity-70 block text-[10px] uppercase tracking-wider font-bold">License Type</span>
+                <span className="text-on-surface text-sm uppercase font-bold mt-1 inline-block">{licenseInfo?.licenseType || 'Unknown'}</span>
+              </div>
+              <div>
+                <span className="text-on-surface-variant opacity-70 block text-[10px] uppercase tracking-wider font-bold">Activation Date</span>
+                <span className="text-on-surface text-sm font-mono font-bold mt-1 inline-block">
+                  {licenseInfo?.activationDate ? new Date(licenseInfo.activationDate).toLocaleDateString('en-GB') : '—'}
+                </span>
+              </div>
+              <div>
+                <span className="text-on-surface-variant opacity-70 block text-[10px] uppercase tracking-wider font-bold">Expiry Date</span>
+                <span className="text-on-surface text-sm font-mono font-bold mt-1 inline-block">
+                  {licenseInfo?.expiryTs ? new Date(licenseInfo.expiryTs).toLocaleDateString('en-GB') : '—'}
+                </span>
+              </div>
+              <div>
+                <span className="text-on-surface-variant opacity-70 block text-[10px] uppercase tracking-wider font-bold">Remaining Days</span>
+                <span className="text-on-surface text-sm font-bold mt-1 inline-block">{licenseInfo?.daysLeft ?? '—'} Days</span>
+              </div>
+              <div>
+                <span className="text-on-surface-variant opacity-70 block text-[10px] uppercase tracking-wider font-bold">Software Version</span>
+                <span className="text-on-surface text-sm font-bold mt-1 inline-block">v1.0.0</span>
+              </div>
+            </div>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('trigger-license-renewal'))}
+              className="w-full py-2.5 bg-primary text-on-primary font-bold rounded-lg text-xs uppercase tracking-wider hover:brightness-110 active:scale-95 transition-all outline-none"
+            >
+              Renew / Upgrade License Key
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 3: Developer support */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Developer Contact Info */}
+        <div className="bg-surface-bright border border-border-subtle rounded-xl flex flex-col shadow-sm">
           <div className="h-12 px-6 flex items-center justify-between border-b border-border-subtle bg-surface-container-high/30">
             <span className="text-label-caps font-label-caps text-primary uppercase tracking-wider font-bold">Developer Support</span>
             <span className="material-symbols-outlined text-outline text-[20px]">support_agent</span>
           </div>
-          <div className="p-6 space-y-4 flex-1 flex flex-col justify-center">
-            {/* Dev 1 */}
+          <div className="p-6">
             <div className="p-4 bg-surface-deep border border-outline-variant/30 rounded-lg relative overflow-hidden group">
               <span className="material-symbols-outlined text-[64px] absolute right-2 bottom-[-10px] opacity-5 text-primary group-hover:scale-110 transition-transform duration-300">code</span>
               <h5 className="font-bold text-on-surface text-sm">Subhash Prem</h5>
-              <p className="text-[10px] uppercase text-primary font-bold tracking-widest mt-0.5">Software Engineer and Full Stack Developer</p>
+              <p className="text-[10px] uppercase text-primary font-bold tracking-widest mt-0.5">Full Stack Developer & Manager</p>
               <div className="mt-3 space-y-1.5 text-xs text-on-surface-variant font-medium">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[16px] text-outline">call</span>

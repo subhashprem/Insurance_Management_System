@@ -58,10 +58,82 @@ export default function App() {
     setUser(prev => ({ ...prev, ...updated }));
   };
 
+  const handleCheckLicense = () => {
+    window.electronAPI.licenseCheck().then(info => {
+      setLicenseInfo(info);
+    }).catch(() => {});
+  };
+
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-base)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', width: '100vw', background: 'var(--bg-base)' }}>
         <span className="spinner" style={{ width: 32, height: 32, borderWidth: 3, borderTopColor: 'var(--accent)' }} />
+      </div>
+    );
+  }
+
+  // System date clock tampering block
+  if (licenseInfo?.status === 'tampered') {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        width: '100vw',
+        background: '#121212',
+        color: '#ffffff',
+        fontFamily: "'Outfit', sans-serif",
+        textAlign: 'center',
+        padding: '24px'
+      }}>
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.03)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '16px',
+          padding: '40px',
+          maxWidth: '480px',
+          width: '100%',
+          boxShadow: '0 24px 48px rgba(0, 0, 0, 0.5)',
+          backdropFilter: 'blur(10px)'
+        }}>
+          <span className="material-symbols-outlined" style={{ fontSize: '64px', color: '#ff3b30', marginBottom: '20px' }}>history</span>
+          <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>System Date Manipulation Detected</h2>
+          <p style={{ fontSize: '14px', color: '#a0a0a0', lineHeight: '1.6', marginBottom: '24px' }}>
+            The system clock appears to have been modified or set backwards. Access to the software is suspended for security purposes.
+          </p>
+          <div style={{
+            fontSize: '12px',
+            background: 'rgba(255, 59, 48, 0.1)',
+            border: '1px solid rgba(255, 59, 48, 0.2)',
+            borderRadius: '8px',
+            padding: '12px',
+            color: '#ff453a',
+            fontWeight: 'bold',
+            marginBottom: '20px'
+          }}>
+            Please correct your system date and click the button below to re-verify.
+          </div>
+          <button 
+            onClick={handleCheckLicense}
+            style={{
+              padding: '12px 24px',
+              background: '#007aff',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              textTransform: 'uppercase',
+              fontSize: '12px',
+              letterSpacing: '1px',
+              transition: 'background 0.2s'
+            }}
+          >
+            Re-check Clock Status
+          </button>
+        </div>
       </div>
     );
   }
@@ -70,7 +142,7 @@ export default function App() {
   if (licenseInfo?.status === 'expired') {
     return (
       <ToastProvider>
-        <LicenseRenewalPage licenseInfo={licenseInfo} onRenewed={() => setLicenseInfo({ ...licenseInfo, status: 'valid', daysLeft: 365 })} />
+        <LicenseRenewalPage licenseInfo={licenseInfo} onRenewed={handleCheckLicense} />
       </ToastProvider>
     );
   }
@@ -82,6 +154,7 @@ export default function App() {
         : <AppShell
           user={user}
           licenseInfo={licenseInfo}
+          onLicenseUpdated={setLicenseInfo}
           activePage={activePage}
           onNavigate={handleNavigate}
           onLogout={handleLogout}

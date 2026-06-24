@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   licenseCheck:  ()        => ipcRenderer.invoke('license:check'),
   licenseRenew:  (key)     => ipcRenderer.invoke('license:renew', key),
   openWhatsAppAlert: (msg) => ipcRenderer.invoke('license:openWhatsAppAlert', msg),
+  licenseValidateKey: (key)  => ipcRenderer.invoke('license:validateKey', key),
 
   // Users
   listUsers:     ()        => ipcRenderer.invoke('users:list'),

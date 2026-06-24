@@ -91,6 +91,22 @@ export default function Sidebar({ user, activePage, onNavigate, onLogout, isOpen
         <nav className="flex-grow space-y-0.5 px-3">
           {visiblePages.map(p => {
             const isActive = activePage === p.key;
+            const shortcuts = {
+              dashboard: 'F1',
+              proposer: 'F2',
+              policy: 'F3',
+              sr: 'F4',
+              sm: 'F5',
+              ssm: 'F6',
+              areamanager: 'F7',
+              showteam: 'F8',
+              businessfigure: 'F9',
+              notifications: 'F10',
+              settings: 'F11',
+              users: 'F12'
+            };
+            const fKey = shortcuts[p.key];
+
             return (
               <button
                 key={p.key}
@@ -112,8 +128,13 @@ export default function Sidebar({ user, activePage, onNavigate, onLogout, isOpen
                 </span>
                 {!isCollapsed && <span className="font-label-lg text-label-lg text-left flex-1 truncate">{p.label}</span>}
                 {!isCollapsed && p.key === 'notifications' && notifCount > 0 && (
-                  <span className="bg-error text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 animate-pulse">
+                  <span className="bg-error text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 animate-pulse mr-2">
                     {notifCount > 99 ? '99+' : notifCount}
+                  </span>
+                )}
+                {!isCollapsed && fKey && (
+                  <span className="font-mono text-xs text-outline group-hover:text-primary transition-colors select-none font-bold shrink-0">
+                    {fKey}
                   </span>
                 )}
                 {isCollapsed && p.key === 'notifications' && notifCount > 0 && (

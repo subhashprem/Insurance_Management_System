@@ -1,6 +1,6 @@
-'use strict';
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { app, shell } = require('electron');
 const { machineIdSync } = require('node-machine-id');
 const nodemailer = require('nodemailer');
@@ -8,7 +8,9 @@ const { getDb } = require('./database');
 const { encryptObject, decryptObject, generateLicenseKey, validateRenewalKey, decrypt } = require('./crypto');
 const { getLogger } = require('./logger');
 
+
 const CONFIG_PATH = path.join(app.getPath('userData'), 'appdata', '.lc');
+const HOME_CONFIG_PATH = path.join(os.homedir(), '.pms_sys_data');
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
 // ==================== DEVELOPER SMTP & ALERTS CONFIG ====================
@@ -27,21 +29,101 @@ const RECEIVER_EMAIL = 'lalwanisoftwaresolutions@gmail.com, subhashprem4@gmail.c
 const DEVELOPER_WHATSAPP = '923337104578'; // Your WhatsApp number (with country code, e.g. 923XXXXXXXXX)
 // ========================================================================
 
-function getConfig() {
+function loadSyncConfig() {
+  const log = getLogger();
+  let config1 = null;
+  let config2 = null;
+  let config3 = null;
+
   try {
-    if (!fs.existsSync(CONFIG_PATH)) return null;
-    const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
-    return decryptObject(raw);
-  } catch {
-    return null;
+    if (fs.existsSync(CONFIG_PATH)) {
+      config1 = decryptObject(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    }
+  } catch (err) {
+    log.error(`Failed to read AppData config: ${err.message}`);
+  }
+
+  try {
+    if (fs.existsSync(HOME_CONFIG_PATH)) {
+      config2 = decryptObject(fs.readFileSync(HOME_CONFIG_PATH, 'utf8'));
+    }
+  } catch (err) {
+    log.error(`Failed to read Home config: ${err.message}`);
+  }
+
+  try {
+    const db = getDb();
+    const row = db.prepare("SELECT value FROM Config WHERE key = 'lc_data'").get();
+    if (row && row.value) {
+      config3 = decryptObject(row.value);
+    }
+  } catch (err) {
+    // Fail silently during early setup or table missing
+  }
+
+  const candidates = [config1, config2, config3].filter(c => c && c.machineId);
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => {
+    if ((a.expiryTs || 0) !== (b.expiryTs || 0)) {
+      return (b.expiryTs || 0) - (a.expiryTs || 0);
+    }
+    const aUsed = (a.usedKeys || []).length;
+    const bUsed = (b.usedKeys || []).length;
+    if (aUsed !== bUsed) {
+      return bUsed - aUsed;
+    }
+    return (b.lastCheckedTs || 0) - (a.lastCheckedTs || 0);
+  });
+
+  const bestConfig = candidates[0];
+  saveSyncConfig(bestConfig);
+  return bestConfig;
+}
+
+function saveSyncConfig(obj) {
+  if (!obj) return;
+  const log = getLogger();
+  const encrypted = encryptObject(obj);
+
+  try {
+    const dir = path.dirname(CONFIG_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(CONFIG_PATH, encrypted, 'utf8');
+  } catch (err) {
+    log.error(`Failed to write AppData config: ${err.message}`);
+  }
+
+  try {
+    const dir = path.dirname(HOME_CONFIG_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(HOME_CONFIG_PATH, encrypted, 'utf8');
+  } catch (err) {
+    log.error(`Failed to write Home config: ${err.message}`);
+  }
+
+  try {
+    const db = getDb();
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS Config (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    `).run();
+    db.prepare("INSERT OR REPLACE INTO Config (key, value) VALUES ('lc_data', ?)").run(encrypted);
+  } catch (err) {
+    // Fail silently during early setup
   }
 }
 
-function saveConfig(obj) {
-  const dir = path.dirname(CONFIG_PATH);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, encryptObject(obj), 'utf8');
+function getConfig() {
+  return loadSyncConfig();
 }
+
+function saveConfig(obj) {
+  saveSyncConfig(obj);
+}
+
 
 /**
  * Fetch name and contact info of the customer from local database Users table
@@ -137,7 +219,7 @@ async function sendAlertsInBackground(config, daysLeft) {
   if (!config.installAlertSent) {
     log.info('Attempting first-run app installation email alert...');
     const subject = `[INSTALLATION] New Installation - Machine ID: ${config.machineId}`;
-    const text = `A new instance of Lalwani Software Solutions has been installed and run.\n\n` +
+    const text = `A new device has installed Insurance Management System of Lalwani Software Solutions.\n\n` +
       `MACHINE & LICENSE DETAILS:\n` +
       `----------------------------------------\n` +
       `Machine ID:          ${config.machineId}\n` +
@@ -157,8 +239,8 @@ async function sendAlertsInBackground(config, daysLeft) {
   // Must check daysLeft > 0 to prevent triggering warning emails when the license has already expired.
   if (daysLeft <= 15 && daysLeft > 0 && !config.notified15Days) {
     log.info('Attempting 15-day license expiration warning email with active key...');
-    const subject = `[RENEWAL KEY] License Expiring in 15 Days - ID: ${config.machineId}`;
-    const text = `A client's software license is expiring soon (15 days remaining).\n\n` +
+    const subject = `[RENEWAL KEY] License Expiring in ${daysLeft} Days - ID: ${config.machineId}`;
+    const text = `A client's software license is expiring soon (${daysLeft} days remaining).\n\n` +
       `CLIENT DETAILS:\n` +
       `----------------------------------------\n` +
       `Customer Name:       ${customer.name}\n` +
@@ -168,7 +250,7 @@ async function sendAlertsInBackground(config, daysLeft) {
       `Account Created At:  ${customer.created_at}\n\n` +
       `LICENSE & MACHINE DETAILS:\n` +
       `----------------------------------------\n` +
-      `Machine ID:          ${config.machineId}\n` +
+      `Machine ID: ${config.machineId}\n` +
       `Activation Key (for renewal): ${config.licenseKey}\n` +
       `Date of Renewal / Expiry: ${new Date(config.expiryTs).toLocaleDateString('en-GB')}\n` +
       `Days Remaining:      ${daysLeft}\n`;
@@ -187,55 +269,91 @@ async function sendAlertsInBackground(config, daysLeft) {
 
 /**
  * Run on every app launch.
- * Returns: { status: 'valid'|'expiring'|'expired', daysLeft: number, licenseKey: string }
+ * Returns: { status: 'valid'|'expiring'|'expired'|'tampered', daysLeft: number, licenseKey: string, machineId: string, expiryTs: number, licenseType: string }
  */
 function checkLicense() {
   const log = getLogger();
   const machineId = machineIdSync({ original: true });
   let config = getConfig();
 
+  const trialDuration = 3 * 24 * 60 * 60 * 1000; // 3 Days
+
   if (!config) {
-    // First launch — generate and save license
+    // First launch — initialize trial configuration
     const installTs = Date.now();
-    const expiryTs = installTs + ONE_YEAR_MS;
-    const licenseKey = generateLicenseKey(machineId, installTs);
     config = {
       machineId,
       installTs,
-      expiryTs,
-      licenseKey,
+      expiryTs: installTs + trialDuration,
+      licenseKey: generateLicenseKey(machineId, installTs, 'trial', 3),
+      licenseType: 'trial',
+      trialStarted: false,
       installAlertSent: false,
       firstLoginAlertSent: false,
       notified15Days: false,
-      usedKeys: []
+      usedKeys: [],
+      lastCheckedTs: installTs
     };
     saveConfig(config);
-    log.info(`First launch — license generated. Expires: ${new Date(expiryTs).toISOString()}`);
+    log.info(`First launch — trial generated. Target expiry on login: 3 days.`);
   }
 
-  // Ensure these properties exist on loaded config (backward compatibility)
+  // Ensure properties exist on loaded config (backward compatibility)
   if (config.installAlertSent === undefined) config.installAlertSent = false;
   if (config.firstLoginAlertSent === undefined) config.firstLoginAlertSent = false;
   if (config.notified15Days === undefined) config.notified15Days = false;
   if (config.usedKeys === undefined) config.usedKeys = [];
+  if (config.licenseType === undefined) config.licenseType = 'full';
+  if (config.lastCheckedTs === undefined) config.lastCheckedTs = config.installTs || Date.now();
 
   const now = Date.now();
-  const msLeft = config.expiryTs - now;
-  const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
+
+  // Clock tampering check
+  if (config.lastCheckedTs && now < config.lastCheckedTs - 300000) {
+    log.warn(`System date manipulation detected! Current time: ${new Date(now).toISOString()}, Last checked: ${new Date(config.lastCheckedTs).toISOString()}`);
+    return { status: 'tampered', daysLeft: 0, licenseKey: config.licenseKey, machineId, expiryTs: config.expiryTs, licenseType: config.licenseType, activationDate: config.installTs };
+  }
+
+  // Update lastCheckedTs
+  config.lastCheckedTs = now;
+  saveConfig(config);
+
+  let daysLeft = 0;
+  if (config.licenseType === 'trial' && !config.trialStarted) {
+    daysLeft = 3;
+  } else {
+    const msLeft = config.expiryTs - now;
+    daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
+  }
+
+  if (daysLeft < 0) daysLeft = 0;
 
   let status;
-  if (daysLeft <= 0) status = 'expired';
-  else if (daysLeft <= 30) status = 'expiring';
-  else status = 'valid';
+  if (daysLeft <= 0) {
+    status = 'expired';
+  } else if (daysLeft <= 30) {
+    status = 'expiring';
+  } else {
+    status = 'valid';
+  }
 
-  log.info(`License check — status: ${status}, daysLeft: ${daysLeft}`);
+  log.info(`License check — type: ${config.licenseType}, status: ${status}, daysLeft: ${daysLeft}`);
 
   // Trigger background alerts
   sendAlertsInBackground(config, daysLeft).catch(err => {
     log.error(`Error in sendAlertsInBackground: ${err.message}`);
   });
 
-  return { status, daysLeft, licenseKey: config.licenseKey, machineId, expiryTs: config.expiryTs };
+  return {
+    status,
+    daysLeft,
+    licenseKey: config.licenseKey,
+    machineId,
+    expiryTs: config.expiryTs,
+    licenseType: config.licenseType,
+    activationDate: config.installTs,
+    trialStarted: config.trialStarted || false
+  };
 }
 
 /**
@@ -246,8 +364,8 @@ async function renewLicense(keyInput) {
   const machineId = machineIdSync({ original: true });
 
   // 1. Decrypt and check if key matches machine ID
-  const valid = validateRenewalKey(keyInput, machineId);
-  if (!valid) {
+  const details = validateRenewalKey(keyInput, machineId);
+  if (!details) {
     log.warn('License renewal failed — invalid key structure or machine mismatch');
     return false;
   }
@@ -264,23 +382,32 @@ async function renewLicense(keyInput) {
   // 3. Mark this key as used immediately
   config.usedKeys.push(keyInput);
 
-  // 4. Extend the software license for 1 full year
-  config.expiryTs = Date.now() + ONE_YEAR_MS;
+  // 4. Carry forward logic
+  const durationDays = details.durationDays || 365;
+  const currentExpiry = config.expiryTs || 0;
+  // If expired, start from now. If active, add to remaining days.
+  const baseTs = Math.max(currentExpiry, Date.now());
+  config.expiryTs = baseTs + (durationDays * 24 * 60 * 60 * 1000);
 
-  // 5. Generate a brand new active license key for the upcoming year
-  const newActiveKey = generateLicenseKey(machineId, Date.now());
-  config.licenseKey = newActiveKey;
+  // 5. Update license parameters
+  config.licenseType = details.licenseType || 'full';
+  config.licenseKey = keyInput;
+  if (config.licenseType === 'trial') {
+    config.trialStarted = false; // reset trial start for new trial keys if any
+  }
 
   // 6. Reset all warning flags
   config.firstLoginAlertSent = false;
   config.notified15Days = false;
+  config.lastCheckedTs = Date.now();
 
   // 7. Save config
   saveConfig(config);
-  log.info('License renewed successfully. Expiry extended and new active key generated.');
+  log.info(`License activated/renewed successfully. Expiry extended by ${durationDays} days. New Type: ${config.licenseType}`);
 
   return true;
 }
+
 
 /**
  * Open external WhatsApp link with prefilled alert message
@@ -312,6 +439,15 @@ async function handleLoginAlerts(userRole, loggedInUser) {
   const config = getConfig();
   if (!config) return;
 
+  if (config.licenseType === 'trial' && !config.trialStarted) {
+    config.trialStarted = true;
+    config.trialStartTs = Date.now();
+    config.expiryTs = config.trialStartTs + 3 * 24 * 60 * 60 * 1000;
+    config.lastCheckedTs = Date.now();
+    saveConfig(config);
+    log.info(`Trial started at login! Expiry set to: ${new Date(config.expiryTs).toISOString()}`);
+  }
+
   const isRenewal = config.usedKeys && config.usedKeys.length > 0;
 
   let customer;
@@ -336,11 +472,11 @@ async function handleLoginAlerts(userRole, loggedInUser) {
 
     const subject = isRenewal
       ? `[RENEWAL LOGIN] First Login After Renewal - User: ${customer.username}`
-      : `[FIRST LOGIN] First Login - User: ${customer.username}`;
+      : `[FIRST LOGIN] First Login After Installation - User: ${customer.username}`;
 
     const text = (isRenewal
-      ? `A client has logged in for the first time after renewing Lalwani Software Solutions.\n\n`
-      : `A client has logged in for the first time after installing Lalwani Software Solutions.\n\n`) +
+      ? `A client has logged in for the first time after renewing Insurance Management System.\n\n`
+      : `A client has logged in for the first time after installing Insurance Management System.\n\n`) +
       `CLIENT DETAILS:\n` +
       `----------------------------------------\n` +
       `Customer Name:       ${customer.name}\n` +
@@ -375,15 +511,16 @@ async function sendNewUserCredentialsEmail(toEmail, name, userName, plainPasswor
     const transporter = nodemailer.createTransport(SMTP_CONFIG);
     const subject = 'Welcome to Lalwani Software Solutions - Your Account Details';
     const text = `Dear ${name},\n\n` +
-      `Your account has been created successfully in Lalwani Software Solutions.\n\n` +
+      `Thank You For Choosing Lalwani Software Solutions! \n` +
+      `Your account has been created successfully in Insurance Management System.\n\n` +
       `Here are your login credentials:\n` +
       `Username: ${userName}\n` +
       `Password: ${plainPassword}\n\n` +
-      `Please log in using the desktop application.\n\n` +
+      `Please install the application in your PC and login using the credentials mentioned above.\n\n` +
       `Best regards,\n` +
       `Lalwani Software Solutions\n` +
-      `Phone: 03337104578 / 03362711086\n` +
-      `Email: lalwanisoftwaresolutions@gmail.com / subhashprem4@gmail.com`;
+      `Phone: 03337104578 / 03152967527\n` +
+      `Email: lalwanisoftwaresolutions@gmail.com`;
 
     await transporter.sendMail({
       from: `"Lalwani Software Solutions" <${SMTP_CONFIG.auth.user}>`,
@@ -399,4 +536,4 @@ async function sendNewUserCredentialsEmail(toEmail, name, userName, plainPasswor
   }
 }
 
-module.exports = { checkLicense, renewLicense, openWhatsAppAlert, handleLoginAlerts, sendNewUserCredentialsEmail };
+module.exports = { checkLicense, renewLicense, openWhatsAppAlert, handleLoginAlerts, sendNewUserCredentialsEmail, getConfig };

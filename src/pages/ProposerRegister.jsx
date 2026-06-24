@@ -6,40 +6,24 @@ import { useToast } from '../components/Toast.jsx';
 import api from '../lib/api.js';
 
 const EMPTY = { proposal_no:'', holder_name:'', premium:'', pr_no:'', pr_date:'', amount_type:'cash', requirements:'', sr_id:null, sm_id:null, ssm_id:null, status:'not_ok', contact_1:'', contact_2:'' };
-
-const toDisplayDate = (dbDate) => {
-  if (!dbDate) return '';
-  const parts = dbDate.split('-');
-  if (parts.length === 3 && parts[0].length === 4) {
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-  return dbDate;
-};
-
-const toDbDate = (displayDate) => {
-  if (!displayDate) return '';
-  const parts = displayDate.split('/');
-  if (parts.length === 3 && parts[2].length === 4) {
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  }
-  return displayDate;
-};
-
-const formatDateInput = (value) => {
-  let digits = value.replace(/\D/g, '');
-  if (digits.length > 8) digits = digits.slice(0, 8);
-  let formatted = '';
-  if (digits.length > 0) {
-    formatted += digits.slice(0, 2);
-  }
-  if (digits.length > 2) {
-    formatted += '/' + digits.slice(2, 4);
-  }
-  if (digits.length > 4) {
-    formatted += '/' + digits.slice(4, 8);
-  }
-  return formatted;
-};
+import {
+  formatCNIC,
+  validateCNIC,
+  formatPhone,
+  validatePhone,
+  formatDateInput,
+  toDbDate,
+  toDisplayDate,
+  validateDate,
+  validateDOBAge,
+  formatName,
+  validateName,
+  formatCode,
+  validateCode,
+  formatAmount,
+  validateAmount,
+  trimSpaces
+} from '../lib/validation.js';
 
 export default function ProposerRegister({ onNavigate, searchFilter, clearSearchFilter }) {
   const toast = useToast();
@@ -73,6 +57,16 @@ export default function ProposerRegister({ onNavigate, searchFilter, clearSearch
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    const handleAddNew = (e) => {
+      if (e.detail?.page === 'proposer') {
+        setModal({ open: true, mode: 'create', data: { ...EMPTY } });
+      }
+    };
+    window.addEventListener('trigger-add-new', handleAddNew);
+    return () => window.removeEventListener('trigger-add-new', handleAddNew);
+  }, []);
+
   const srOpts  = srs.map(s  => ({ value:s.id, label:`${s.sr_code} — ${s.sr_name}`   }));
   const smOpts  = sms.map(s  => ({ value:s.id, label:`${s.sm_code} — ${s.sm_name}`   }));
   const ssmOpts = ssms.map(s => ({ value:s.id, label:`${s.ssm_code} — ${s.ssm_name}` }));
@@ -90,15 +84,20 @@ export default function ProposerRegister({ onNavigate, searchFilter, clearSearch
 
   const validate = (d) => {
     const e = {};
-    if (!d.proposal_no.trim()) e.proposal_no = 'Required';
-    if (!d.holder_name.trim()) e.holder_name = 'Required';
-    if (!d.premium || isNaN(d.premium)) e.premium = 'Valid number required';
+    const proposalErr = validateCode(d.proposal_no); if (proposalErr) e.proposal_no = proposalErr;
+    const nameErr = validateName(d.holder_name); if (nameErr) e.holder_name = nameErr;
+    const premiumErr = validateAmount(d.premium); if (premiumErr) e.premium = premiumErr;
+    if (d.pr_no) {
+      const prNoErr = validateCode(d.pr_no); if (prNoErr) e.pr_no = prNoErr;
+    }
     if (d.pr_date) {
       const dbDate = toDbDate(d.pr_date);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dbDate) || isNaN(Date.parse(dbDate))) {
         e.pr_date = 'Invalid date (use DD/MM/YYYY)';
       }
     }
+    const phone1Err = validatePhone(d.contact_1); if (phone1Err) e.contact_1 = phone1Err;
+    const phone2Err = validatePhone(d.contact_2); if (phone2Err) e.contact_2 = phone2Err;
     if (!d.sr_id)  e.sr_id  = 'Required';
     if (!d.sm_id)  e.sm_id  = 'Required';
     if (!d.ssm_id) e.ssm_id = 'Required';
@@ -145,13 +144,31 @@ export default function ProposerRegister({ onNavigate, searchFilter, clearSearch
   };
 
   const handleSave = async () => {
-    const e = validate(modal.data);
-    if (Object.keys(e).length) { setErrors(e); return; }
-    setSaving(true);
-    const willConvert = modal.data.status === 'ok' && modal.mode === 'edit';
-    const payload = {
+    const trimmedData = {
       ...modal.data,
-      pr_date: toDbDate(modal.data.pr_date)
+      proposal_no: trimSpaces(modal.data.proposal_no).toUpperCase(),
+      holder_name: trimSpaces(modal.data.holder_name),
+      premium: trimSpaces(modal.data.premium),
+      pr_no: trimSpaces(modal.data.pr_no).toUpperCase(),
+      contact_1: trimSpaces(modal.data.contact_1),
+      contact_2: trimSpaces(modal.data.contact_2),
+      requirements: trimSpaces(modal.data.requirements)
+    };
+    const e = validate(trimmedData);
+    if (Object.keys(e).length) {
+      setErrors(e);
+      setTimeout(() => {
+        const errEl = document.querySelector('.border-error, [class*="border-error"]');
+        if (errEl) errEl.focus();
+      }, 50);
+      toast('Please correct the validation errors before saving.', 'error');
+      return;
+    }
+    setSaving(true);
+    const willConvert = trimmedData.status === 'ok' && modal.mode === 'edit';
+    const payload = {
+      ...trimmedData,
+      pr_date: toDbDate(trimmedData.pr_date)
     };
     try {
       const res = modal.mode==='create' ? await api.createProposer(payload) : await api.updateProposer(payload);
@@ -159,7 +176,7 @@ export default function ProposerRegister({ onNavigate, searchFilter, clearSearch
         toast(`Proposal ${modal.mode==='create'?'created':'updated'}`, 'success');
         setModal(m=>({...m,open:false}));
         load();
-        if (willConvert && !modal.data.converted_to_policy) setConvertId(modal.data.id);
+        if (willConvert && !trimmedData.converted_to_policy) setConvertId(trimmedData.id);
       } else toast(res.error||'Save failed','error');
     } finally { setSaving(false); }
   };
@@ -188,13 +205,29 @@ export default function ProposerRegister({ onNavigate, searchFilter, clearSearch
 
   const handleExportExcel = async () => {
     toast('Generating Excel export of proposal records...', 'info');
-    const res = await api.exportProposerExcel(filtered);
-    if (res?.ok) {
-      toast(`Excel saved to: ${res.path}`, 'success');
-    } else if (res?.ok === false && res?.canceled) {
-      toast('Export cancelled', 'info');
-    } else {
-      toast(res?.error || 'Excel export failed', 'error');
+    try {
+      const latest = await api.listProposers();
+      const latestFiltered = latest.filter(r =>
+        !search ||
+        r.holder_name?.toLowerCase().includes(search.toLowerCase()) ||
+        r.proposal_no?.toLowerCase().includes(search.toLowerCase()) ||
+        r.sr_code?.toLowerCase().includes(search.toLowerCase()) ||
+        r.sm_code?.toLowerCase().includes(search.toLowerCase()) ||
+        r.ssm_code?.toLowerCase().includes(search.toLowerCase()) ||
+        r.contact_1?.toLowerCase().includes(search.toLowerCase()) ||
+        r.contact_2?.toLowerCase().includes(search.toLowerCase())
+      );
+      const res = await api.exportProposerExcel(latestFiltered);
+      setRows(latest);
+      if (res?.ok) {
+        toast(`Excel saved to: ${res.path}`, 'success');
+      } else if (res?.ok === false && res?.canceled) {
+        toast('Export cancelled', 'info');
+      } else {
+        toast(res?.error || 'Excel export failed', 'error');
+      }
+    } catch {
+      toast('Excel export failed', 'error');
     }
   };
 
@@ -322,7 +355,7 @@ export default function ProposerRegister({ onNavigate, searchFilter, clearSearch
                 }`}
                 placeholder="PR-XXXX-XXXX"
                 value={modal.data.proposal_no}
-                onChange={e=>set('proposal_no',e.target.value)}
+                onChange={e=>set('proposal_no',formatCode(e.target.value))}
               />
               {errors.proposal_no&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors.proposal_no}</span>}
             </div>
@@ -334,38 +367,44 @@ export default function ProposerRegister({ onNavigate, searchFilter, clearSearch
                 }`}
                 placeholder="Full legal name"
                 value={modal.data.holder_name}
-                onChange={e=>set('holder_name',e.target.value)}
+                onChange={e=>set('holder_name',formatName(e.target.value))}
               />
               {errors.holder_name&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors.holder_name}</span>}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Contact No 1</label>
               <input
-                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
-                placeholder="+92 XXX XXXXXXX"
+                className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${
+                  errors.contact_1 ? 'border-error focus:border-error' : ''
+                }`}
+                placeholder="03XXXXXXXXX"
                 value={modal.data.contact_1 || ''}
-                onChange={e=>set('contact_1',e.target.value)}
+                onChange={e=>set('contact_1',formatPhone(e.target.value))}
               />
+              {errors.contact_1&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors.contact_1}</span>}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Contact No 2</label>
               <input
-                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
-                placeholder="+92 XXX XXXXXXX"
+                className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${
+                  errors.contact_2 ? 'border-error focus:border-error' : ''
+                }`}
+                placeholder="03XXXXXXXXX"
                 value={modal.data.contact_2 || ''}
-                onChange={e=>set('contact_2',e.target.value)}
+                onChange={e=>set('contact_2',formatPhone(e.target.value))}
               />
+              {errors.contact_2&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors.contact_2}</span>}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider block">Amount / Premium (PKR) <span className="text-error">*</span></label>
               <input
-                type="number"
+                type="text"
                 className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${
                   errors.premium ? 'border-error focus:border-error' : ''
                 }`}
                 placeholder="50,000"
                 value={modal.data.premium}
-                onChange={e=>set('premium',e.target.value)}
+                onChange={e=>set('premium',formatAmount(e.target.value))}
               />
               {errors.premium&&<span className="text-[11px] text-error font-semibold mt-0.5">{errors.premium}</span>}
             </div>
@@ -375,7 +414,7 @@ export default function ProposerRegister({ onNavigate, searchFilter, clearSearch
                 className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
                 placeholder="PR Number"
                 value={modal.data.pr_no}
-                onChange={e=>set('pr_no',e.target.value)}
+                onChange={e=>set('pr_no',formatCode(e.target.value))}
               />
             </div>
             <div className="flex flex-col gap-1.5">

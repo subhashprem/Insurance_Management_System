@@ -80,22 +80,28 @@ sequenceDiagram
     participant App as Insurance Policy Records Management System
     participant Dev as Lalwani Software Solutions
     
-    Note over App: 1st Launch: Generates Machine ID<br/>Sets 1-Year Trial Expiry
-    User->>App: Uses software for 365 Days
-    Note over App: Expiry Reached (Days Left = 0)
-    App->>User: full screen Lock / "License Expired"
+    Note over App: 1st Launch: Generates Machine ID<br/>Prepares Trial Config
+    User->>App: First Successful Login
+    Note over App: Starts 3-Day Trial Countdown
+    User->>App: Uses software for Trial Period
+    Note over App: Expiry Reached / Clock Tampered
+    App->>User: Fullscreen Lock / "License Expired" or "Date Tampering"
     User->>User: Copies Unique Machine ID
     User->>Dev: Sends Machine ID + Renewal Request
-    Note over Dev: Runs keygen.js <MachineID>
+    Note over Dev: Runs keygen.js <MachineID> [type] [days]
     Dev->>User: Sends cryptographically signed Key
     User->>App: Enters key on Lock Screen
-    Note over App: Decrypts & validates Key against Local ID
-    App->>User: Unlocks software (Adds +1 Year)
+    Note over App: Decrypts, validates Key, carries forward days
+    App->>User: Unlocks software (Adds +durationDays)
 ```
 
 ### 🔒 Core Licensing Concepts
 * **Machine Binding**: On the first launch, the software uses the host computer's hardware configuration (CPU, motherboard, hard drive signatures) to generate a **Unique Machine ID**. The license is bound to this ID and cannot run on another PC.
-* **Subscription Check**: Every time the app starts, it checks the local encrypted system configuration file (`sysconfig.dat`).
+* **3-Day Trial Version**: A fresh installation starts as a 3-day Trial. The countdown is triggered strictly upon the first successful login of any administrative or operator profile.
+* **System Clock Tampering Lockout**: If the host computer's system clock is rolled back/manipulated backwards by more than 5 minutes, the application suspends workspace access and displays a fullscreen alert: *"System date manipulation detected. Please correct your system date."* Correcting the clock resolves this block instantly.
+* **Multi-Location Config Redundancy**: Licensing configuration is dynamically synchronized between (1) AppData configuration (`.lc`), (2) User Home directory settings (`.pms_sys_data`), and (3) the local SQLite Database `Config` table under key `lc_data`. If files are deleted or tampered with, they are auto-healed from the remaining location backups.
+* **Carry-Forward Expiry Renewal**: When you renew or upgrade the license before the current key expires, any remaining active days are added onto your new license length (carried forward) instead of being lost.
+* **Subscription Check**: Every time the app starts, it checks the synchronized config:
   - **Valid Status**: If there are more than 30 days left, the app runs normally.
   - **Expiring Status**: When under 30 days remain, a warning banner appears on the top of the interface showing the days left.
   - **Expired Status (Fullscreen Lock)**: Once the expiration date is reached, the application locks down. It blocks the main interface and redirects the user to a secure **License Renewal** screen.
@@ -116,9 +122,12 @@ When locked out, the user is presented with the License Renewal page.
 ### Step 3: Generating the Key (For Developers)
 Using the developer's key generator utility (`keygen.js`), the developer runs:
 ```bash
-node keygen.js <Machine-ID>
+node keygen.js <Machine-ID> [licenseType] [durationDays]
 ```
-* **How the Key is Computed**: The script takes the client's `Machine ID`, appends the current timestamp, and signs it using a secure salt (`LIC_SALT_DEV_2026`) via **AES-256-CBC** encryption.
+* **Parameters**: 
+  - `licenseType`: Optional (e.g., `full` or `trial`). Defaults to `full`.
+  - `durationDays`: Optional. Number of active days (e.g., `365`, `30`, `90`). Defaults to `365`.
+* **How the Key is Computed**: The script takes the client's `Machine ID`, appends the current timestamp, license type, duration, and signs it using a secure salt (`LIC_SALT_DEV_2026`) via **AES-256-CBC** encryption.
 * The generator outputs a secure, cryptographically hashed activation string.
 
 ### Step 4: Activating the Software
@@ -127,8 +136,14 @@ node keygen.js <Machine-ID>
 
 ### Step 5: System Verification & Unlock
 * The application decrypts the pasted key using the built-in decryption key.
-* It extracts the encoded Machine ID and verifies it against the current machine's physical hardware ID.
-* **Success**: If they match, the system adds **1 year (365 days)** to the expiration date, saves the updated settings into `sysconfig.dat`, resets the email notification thresholds, and unlocks full access to the application immediately.
+* It extracts the encoded Machine ID, license type, duration, and verifies it against the current machine's physical hardware ID.
+* **Success**: If they match, the system adds the key's duration to the expiration date (carrying forward any remaining days), saves the updated settings into the multi-location config backups, resets the email notification thresholds, and unlocks full access to the application immediately.
+
+---
+### 🛠️ Input Validation System & Hotkeys
+* **Typing Constraints & Validations**: Custom validations format and filter input fields while typing (e.g., CNIC auto-formatting, phone number digit filters, name rules, positive amounts, valid uppercase codes, and auto-trimmed spacing). On validation failure, forms block saves, highlight invalid fields with a red border, and focus the first invalid input.
+* **F1-F12 Page Shortcuts**: Press **F1** through **F12** to navigate between pages instantly.
+* **Ctrl + N Hotkey**: Press **Ctrl + N** to immediately pop open the "Add New" creation modal on any register screen.
 
 ---
 > [!NOTE]  

@@ -6,40 +6,24 @@ import { useToast } from '../components/Toast.jsx';
 import api from '../lib/api.js';
 
 const EMPTY = { policy_no:'', holder_name:'', cnic:'', address:'', contact_1:'', contact_2:'', premium:'', issue_date:'', due_date:'', table_term:'', last_paid_date:'', sr_id:null, sm_id:null, ssm_id:null, relation:'', dob:'' };
-
-const toDisplayDate = (dbDate) => {
-  if (!dbDate) return '';
-  const parts = dbDate.split('-');
-  if (parts.length === 3 && parts[0].length === 4) {
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-  return dbDate;
-};
-
-const toDbDate = (displayDate) => {
-  if (!displayDate) return '';
-  const parts = displayDate.split('/');
-  if (parts.length === 3 && parts[2].length === 4) {
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  }
-  return displayDate;
-};
-
-const formatDateInput = (value) => {
-  let digits = value.replace(/\D/g, '');
-  if (digits.length > 8) digits = digits.slice(0, 8);
-  let formatted = '';
-  if (digits.length > 0) {
-    formatted += digits.slice(0, 2);
-  }
-  if (digits.length > 2) {
-    formatted += '/' + digits.slice(2, 4);
-  }
-  if (digits.length > 4) {
-    formatted += '/' + digits.slice(4, 8);
-  }
-  return formatted;
-};
+import {
+  formatCNIC,
+  validateCNIC,
+  formatPhone,
+  validatePhone,
+  formatDateInput,
+  toDbDate,
+  toDisplayDate,
+  validateDate,
+  validateDOBAge,
+  formatName,
+  validateName,
+  formatCode,
+  validateCode,
+  formatAmount,
+  validateAmount,
+  trimSpaces
+} from '../lib/validation.js';
 
 export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
   const toast = useToast();
@@ -73,6 +57,16 @@ export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
+    const handleAddNew = (e) => {
+      if (e.detail?.page === 'policy') {
+        setModal({ open: true, mode: 'create', data: { ...EMPTY } });
+      }
+    };
+    window.addEventListener('trigger-add-new', handleAddNew);
+    return () => window.removeEventListener('trigger-add-new', handleAddNew);
+  }, []);
+
+  useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const highlightId = urlParams.get('highlight');
     if (highlightId && rows.length > 0) {
@@ -96,13 +90,27 @@ export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
 
   const handleExportExcel = async () => {
     toast('Generating Excel export of policy records...', 'info');
-    const res = await api.exportPolicyExcel(filtered);
-    if (res?.ok) {
-      toast(`Excel saved to: ${res.path}`, 'success');
-    } else if (res?.ok === false && res?.canceled) {
-      toast('Export cancelled', 'info');
-    } else {
-      toast(res?.error || 'Excel export failed', 'error');
+    try {
+      const latest = await api.listPolicies();
+      const latestFiltered = latest.filter(r =>
+        !search ||
+        r.holder_name?.toLowerCase().includes(search.toLowerCase()) ||
+        r.policy_no?.toLowerCase().includes(search.toLowerCase()) ||
+        r.sr_code?.toLowerCase().includes(search.toLowerCase()) ||
+        r.sm_code?.toLowerCase().includes(search.toLowerCase()) ||
+        r.ssm_code?.toLowerCase().includes(search.toLowerCase())
+      );
+      const res = await api.exportPolicyExcel(latestFiltered);
+      setRows(latest);
+      if (res?.ok) {
+        toast(`Excel saved to: ${res.path}`, 'success');
+      } else if (res?.ok === false && res?.canceled) {
+        toast('Export cancelled', 'info');
+      } else {
+        toast(res?.error || 'Excel export failed', 'error');
+      }
+    } catch {
+      toast('Excel export failed', 'error');
     }
   };
 
@@ -121,35 +129,25 @@ export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
 
   const validate = (d) => {
     const e = {};
-    if (!d.policy_no.trim())  e.policy_no  = 'Required';
-    if (!d.holder_name.trim())e.holder_name = 'Required';
-    if (!d.cnic.trim())       e.cnic        = 'Required';
-    if (!d.premium || isNaN(d.premium)) e.premium = 'Valid number required';
+    const policyErr = validateCode(d.policy_no); if (policyErr) e.policy_no = policyErr;
+    const nameErr = validateName(d.holder_name); if (nameErr) e.holder_name = nameErr;
+    const cnicErr = validateCNIC(d.cnic); if (cnicErr) e.cnic = cnicErr;
+    const phone1Err = validatePhone(d.contact_1); if (phone1Err) e.contact_1 = phone1Err;
+    const phone2Err = validatePhone(d.contact_2); if (phone2Err) e.contact_2 = phone2Err;
+    const premiumErr = validateAmount(d.premium); if (premiumErr) e.premium = premiumErr;
     if (!d.issue_date) {
-      e.issue_date  = 'Required';
+      e.issue_date = 'Required';
     } else {
-      const dbDate = toDbDate(d.issue_date);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dbDate) || isNaN(Date.parse(dbDate))) {
-        e.issue_date = 'Invalid date (use DD/MM/YYYY)';
-      }
+      const issueErr = validateDate(d.issue_date); if (issueErr) e.issue_date = issueErr;
     }
     if (d.due_date) {
-      const dbDate = toDbDate(d.due_date);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dbDate) || isNaN(Date.parse(dbDate))) {
-        e.due_date = 'Invalid date (use DD/MM/YYYY)';
-      }
+      const dueErr = validateDate(d.due_date); if (dueErr) e.due_date = dueErr;
     }
     if (d.last_paid_date) {
-      const dbDate = toDbDate(d.last_paid_date);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dbDate) || isNaN(Date.parse(dbDate))) {
-        e.last_paid_date = 'Invalid date (use DD/MM/YYYY)';
-      }
+      const lastErr = validateDate(d.last_paid_date); if (lastErr) e.last_paid_date = lastErr;
     }
     if (d.dob) {
-      const dbDate = toDbDate(d.dob);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dbDate) || isNaN(Date.parse(dbDate))) {
-        e.dob = 'Invalid date (use DD/MM/YYYY)';
-      }
+      const dobErr = validateDOBAge(d.dob); if (dobErr) e.dob = dobErr;
     }
     if (!d.sr_id)  e.sr_id  = 'Required';
     if (!d.sm_id)  e.sm_id  = 'Required';
@@ -197,15 +195,35 @@ export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
   };
 
   const handleSave = async () => {
-    const e = validate(modal.data);
-    if (Object.keys(e).length) { setErrors(e); return; }
+    const trimmedData = {
+      ...modal.data,
+      policy_no: trimSpaces(modal.data.policy_no).toUpperCase(),
+      holder_name: trimSpaces(modal.data.holder_name),
+      cnic: trimSpaces(modal.data.cnic),
+      contact_1: trimSpaces(modal.data.contact_1),
+      contact_2: trimSpaces(modal.data.contact_2),
+      premium: trimSpaces(modal.data.premium),
+      relation: trimSpaces(modal.data.relation),
+      table_term: trimSpaces(modal.data.table_term),
+      address: trimSpaces(modal.data.address)
+    };
+    const e = validate(trimmedData);
+    if (Object.keys(e).length) {
+      setErrors(e);
+      setTimeout(() => {
+        const errEl = document.querySelector('.border-error, [class*="border-error"]');
+        if (errEl) errEl.focus();
+      }, 50);
+      toast('Please correct the validation errors before saving.', 'error');
+      return;
+    }
     setSaving(true);
     const payload = {
-      ...modal.data,
-      issue_date: toDbDate(modal.data.issue_date),
-      due_date: toDbDate(modal.data.due_date),
-      last_paid_date: toDbDate(modal.data.last_paid_date),
-      dob: toDbDate(modal.data.dob)
+      ...trimmedData,
+      issue_date: toDbDate(trimmedData.issue_date),
+      due_date: toDbDate(trimmedData.due_date),
+      last_paid_date: toDbDate(trimmedData.last_paid_date),
+      dob: toDbDate(trimmedData.dob)
     };
     try {
       const res = modal.mode==='create' ? await api.createPolicy(payload) : await api.updatePolicy(payload);
@@ -340,9 +358,9 @@ export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
               ['relation','Son/Daughter/Wife of',false,'text', 'Guardian/Spouse Name'],
               ['cnic','CNIC / ID Number',true,'text', '00000-0000000-0'],
               ['dob','Date of Birth',false,'date', ''],
-              ['contact_1','Contact No 1',false,'text', '+92 XXX XXXXXXX'],
-              ['contact_2','Contact No 2',false,'text', '+92 XXX XXXXXXX'],
-              ['premium','Premium Amount (PKR)',true,'number', '50,000'],
+              ['contact_1','Contact No 1',false,'text', '03XXXXXXXXX'],
+              ['contact_2','Contact No 2',false,'text', '03XXXXXXXXX'],
+              ['premium','Premium Amount (PKR)',true,'text', '50,000'],
               ['issue_date','Issue Date',true,'date', ''],
               ['due_date','Due Date',false,'date', ''],
               ['table_term','Table Term',false,'text', 'e.g. 10 Years'],
@@ -361,7 +379,16 @@ export default function PolicyRegister({ searchFilter, clearSearchFilter }) {
                       errors[k] ? 'border-error focus:border-error' : ''
                     } ${type === 'date' ? 'pr-10' : ''}`}
                     value={modal.data[k]||''}
-                    onChange={e=>set(k, type === 'date' ? formatDateInput(e.target.value) : e.target.value)}
+                    onChange={e=>{
+                      let val = e.target.value;
+                      if (type === 'date') val = formatDateInput(val);
+                      else if (k === 'policy_no') val = formatCode(val);
+                      else if (k === 'holder_name' || k === 'relation') val = formatName(val);
+                      else if (k === 'cnic') val = formatCNIC(val);
+                      else if (k === 'contact_1' || k === 'contact_2') val = formatPhone(val);
+                      else if (k === 'premium') val = formatAmount(val);
+                      set(k, val);
+                    }}
                   />
                   {type === 'date' && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer flex items-center justify-center w-6 h-6 z-10">

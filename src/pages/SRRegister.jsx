@@ -28,40 +28,22 @@ const EMPTY = {
   total_business: 0.0,
   dob: ''
 };
-
-const toDisplayDate = (dbDate) => {
-  if (!dbDate) return '';
-  const parts = dbDate.split('-');
-  if (parts.length === 3 && parts[0].length === 4) {
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-  return dbDate;
-};
-
-const toDbDate = (displayDate) => {
-  if (!displayDate) return '';
-  const parts = displayDate.split('/');
-  if (parts.length === 3 && parts[2].length === 4) {
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  }
-  return displayDate;
-};
-
-const formatDateInput = (value) => {
-  let digits = value.replace(/\D/g, '');
-  if (digits.length > 8) digits = digits.slice(0, 8);
-  let formatted = '';
-  if (digits.length > 0) {
-    formatted += digits.slice(0, 2);
-  }
-  if (digits.length > 2) {
-    formatted += '/' + digits.slice(2, 4);
-  }
-  if (digits.length > 4) {
-    formatted += '/' + digits.slice(4, 8);
-  }
-  return formatted;
-};
+import {
+  formatCNIC,
+  validateCNIC,
+  formatPhone,
+  validatePhone,
+  formatDateInput,
+  toDbDate,
+  toDisplayDate,
+  validateDate,
+  validateDOBAge,
+  formatName,
+  validateName,
+  formatCode,
+  validateCode,
+  trimSpaces
+} from '../lib/validation.js';
 
 function FileAttachmentInput({ label, value, fieldName, code, onChange }) {
   const [uploading, setUploading] = useState(false);
@@ -157,6 +139,16 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const handleAddNew = (e) => {
+      if (e.detail?.page === 'sr') {
+        setModal({ open: true, mode: 'create', data: { ...EMPTY } });
+      }
+    };
+    window.addEventListener('trigger-add-new', handleAddNew);
+    return () => window.removeEventListener('trigger-add-new', handleAddNew);
+  }, []);
+
   const smOpts = sms.map(s => ({ value: s.id, label: `${s.sm_code} — ${s.sm_name}` }));
   const ssmOpts = ssms.map(s => ({ value: s.id, label: `${s.ssm_code} — ${s.ssm_name}` }));
   const amOpts = ams.map(a => ({ value: a.id, label: `${a.am_code} — ${a.am_name}` }));
@@ -171,24 +163,16 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
 
   const validate = (d) => {
     const e = {};
-    if (!d.sr_code.trim()) e.sr_code = 'Required';
-    if (!d.sr_name.trim()) e.sr_name = 'Required';
-    if (!d.cnic.trim()) e.cnic = 'Required';
+    const codeErr = validateCode(d.sr_code); if (codeErr) e.sr_code = codeErr;
+    const nameErr = validateName(d.sr_name); if (nameErr) e.sr_name = nameErr;
+    const cnicErr = validateCNIC(d.cnic); if (cnicErr) e.cnic = cnicErr;
+    const phone1Err = validatePhone(d.contact_1); if (phone1Err) e.contact_1 = phone1Err;
+    const phone2Err = validatePhone(d.contact_2); if (phone2Err) e.contact_2 = phone2Err;
+    const regDateErr = validateDate(d.registration_date); if (regDateErr) e.registration_date = regDateErr;
+    const dobErr = validateDOBAge(d.dob); if (dobErr) e.dob = dobErr;
     if (!d.sm_id) e.sm_id = 'Required';
     if (!d.ssm_id) e.ssm_id = 'Required';
     if (!d.am_id) e.am_id = 'Required';
-    if (d.registration_date) {
-      const dbDate = toDbDate(d.registration_date);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dbDate) || isNaN(Date.parse(dbDate))) {
-        e.registration_date = 'Invalid date (use DD/MM/YYYY)';
-      }
-    }
-    if (d.dob) {
-      const dbDate = toDbDate(d.dob);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dbDate) || isNaN(Date.parse(dbDate))) {
-        e.dob = 'Invalid date (use DD/MM/YYYY)';
-      }
-    }
     return e;
   };
 
@@ -227,15 +211,34 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
   };
 
   const handleSave = async () => {
-    const e = validate(modal.data);
-    if (Object.keys(e).length) { setErrors(e); return; }
+    const trimmedData = {
+      ...modal.data,
+      sr_code: trimSpaces(modal.data.sr_code).toUpperCase(),
+      sr_name: trimSpaces(modal.data.sr_name),
+      cnic: trimSpaces(modal.data.cnic),
+      contact_1: trimSpaces(modal.data.contact_1),
+      contact_2: trimSpaces(modal.data.contact_2),
+      relation: trimSpaces(modal.data.relation),
+      registration_no: trimSpaces(modal.data.registration_no).toUpperCase(),
+      address: trimSpaces(modal.data.address)
+    };
+    const e = validate(trimmedData);
+    if (Object.keys(e).length) {
+      setErrors(e);
+      setTimeout(() => {
+        const errEl = document.querySelector('.border-error, [class*="border-error"]');
+        if (errEl) errEl.focus();
+      }, 50);
+      toast('Please correct the validation errors before saving.', 'error');
+      return;
+    }
 
     if (modal.mode === 'edit') {
       const original = rows.find(r => r.id === modal.data.id);
       if (original) {
-        const smChanged  = original.sm_id !== modal.data.sm_id;
-        const ssmChanged = original.ssm_id !== modal.data.ssm_id;
-        const amChanged  = original.am_id !== modal.data.am_id;
+        const smChanged  = original.sm_id !== trimmedData.sm_id;
+        const ssmChanged = original.ssm_id !== trimmedData.ssm_id;
+        const amChanged  = original.am_id !== trimmedData.am_id;
         if (smChanged || ssmChanged || amChanged) {
           const ok = window.confirm("You are changing the hierarchy of this SR. Their previous business will remain with the old hierarchy, and only new business will follow the new hierarchy. Do you want to proceed?");
           if (!ok) return;
@@ -245,9 +248,9 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
 
     setSaving(true);
     const payload = {
-      ...modal.data,
-      registration_date: toDbDate(modal.data.registration_date),
-      dob: toDbDate(modal.data.dob)
+      ...trimmedData,
+      registration_date: toDbDate(trimmedData.registration_date),
+      dob: toDbDate(trimmedData.dob)
     };
     try {
       const res = modal.mode === 'create' ? await api.createSR(payload) : await api.updateSR(payload);
@@ -276,13 +279,30 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
 
   const handleExportExcel = async () => {
     toast('Generating Excel export of SR records...', 'info');
-    const res = await api.exportSRExcel(filtered);
-    if (res?.ok) {
-      toast(`Excel saved to: ${res.path}`, 'success');
-    } else if (res?.ok === false && res?.canceled) {
-      toast('Export cancelled', 'info');
-    } else {
-      toast(res?.error || 'Excel export failed', 'error');
+    try {
+      const latest = await api.listSR();
+      const latestFiltered = latest.filter(r => {
+        if (!search) return true;
+        const s = search.toLowerCase();
+        return r.sr_name?.toLowerCase().includes(s) ||
+               r.sr_code?.toLowerCase().includes(s) ||
+               r.cnic?.toLowerCase().includes(s) ||
+               r.contact_1?.toLowerCase().includes(s) ||
+               r.sm_code?.toLowerCase().includes(s) ||
+               r.ssm_code?.toLowerCase().includes(s) ||
+               r.am_code?.toLowerCase().includes(s);
+      });
+      const res = await api.exportSRExcel(latestFiltered);
+      setRows(latest);
+      if (res?.ok) {
+        toast(`Excel saved to: ${res.path}`, 'success');
+      } else if (res?.ok === false && res?.canceled) {
+        toast('Export cancelled', 'info');
+      } else {
+        toast(res?.error || 'Excel export failed', 'error');
+      }
+    } catch {
+      toast('Excel export failed', 'error');
     }
   };
 
@@ -438,7 +458,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
                 autoFocus
                 className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.sr_code ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.sr_code || ''} 
-                onChange={e => set('sr_code', e.target.value)} 
+                onChange={e => set('sr_code', formatCode(e.target.value))} 
               />
               {errors.sr_code && <span className="text-error text-xs mt-1">{errors.sr_code}</span>}
             </div>
@@ -448,7 +468,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
               <input 
                 className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.sr_name ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.sr_name || ''} 
-                onChange={e => set('sr_name', e.target.value)} 
+                onChange={e => set('sr_name', formatName(e.target.value))} 
               />
               {errors.sr_name && <span className="text-error text-xs mt-1">{errors.sr_name}</span>}
             </div>
@@ -458,7 +478,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
               <input 
                 className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
                 value={modal.data.relation || ''} 
-                onChange={e => set('relation', e.target.value)} 
+                onChange={e => set('relation', formatName(e.target.value))} 
               />
             </div>
 
@@ -468,7 +488,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
                 className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.cnic ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.cnic || ''} 
                 placeholder="35201-XXXXXXX-X"
-                onChange={e => set('cnic', e.target.value)} 
+                onChange={e => set('cnic', formatCNIC(e.target.value))} 
               />
               {errors.cnic && <span className="text-error text-xs mt-1">{errors.cnic}</span>}
             </div>
@@ -476,19 +496,21 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
             <div className="form-group">
               <label className="form-label">Contact 1</label>
               <input 
-                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
+                className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.contact_1 ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.contact_1 || ''} 
-                onChange={e => set('contact_1', e.target.value)} 
+                onChange={e => set('contact_1', formatPhone(e.target.value))} 
               />
+              {errors.contact_1 && <span className="text-error text-xs mt-1">{errors.contact_1}</span>}
             </div>
 
             <div className="form-group">
               <label className="form-label">Contact 2</label>
               <input 
-                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
+                className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.contact_2 ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.contact_2 || ''} 
-                onChange={e => set('contact_2', e.target.value)} 
+                onChange={e => set('contact_2', formatPhone(e.target.value))} 
               />
+              {errors.contact_2 && <span className="text-error text-xs mt-1">{errors.contact_2}</span>}
             </div>
 
             <div className="form-group">
@@ -496,7 +518,7 @@ export default function SRRegister({ searchFilter, clearSearchFilter }) {
               <input 
                 className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
                 value={modal.data.registration_no || ''} 
-                onChange={e => set('registration_no', e.target.value)} 
+                onChange={e => set('registration_no', formatCode(e.target.value))} 
               />
             </div>
 

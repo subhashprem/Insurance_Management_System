@@ -21,6 +21,14 @@ export default function LoginPage({ onLogin }) {
       setError('Please enter your username and password.');
       return;
     }
+
+    const sqliPatterns = [/'\s*OR\s+/i, /--/i, /DROP\s+TABLE/i, /UNION\s+SELECT/i];
+    const hasSqli = sqliPatterns.some(p => p.test(form.username) || p.test(form.password));
+    if (hasSqli) {
+      setError('Invalid credentials, please try again.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {

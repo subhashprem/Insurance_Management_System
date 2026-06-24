@@ -26,40 +26,22 @@ const EMPTY = {
   passport_pic: '',
   dob: ''
 };
-
-const toDisplayDate = (dbDate) => {
-  if (!dbDate) return '';
-  const parts = dbDate.split('-');
-  if (parts.length === 3 && parts[0].length === 4) {
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-  return dbDate;
-};
-
-const toDbDate = (displayDate) => {
-  if (!displayDate) return '';
-  const parts = displayDate.split('/');
-  if (parts.length === 3 && parts[2].length === 4) {
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  }
-  return displayDate;
-};
-
-const formatDateInput = (value) => {
-  let digits = value.replace(/\D/g, '');
-  if (digits.length > 8) digits = digits.slice(0, 8);
-  let formatted = '';
-  if (digits.length > 0) {
-    formatted += digits.slice(0, 2);
-  }
-  if (digits.length > 2) {
-    formatted += '/' + digits.slice(2, 4);
-  }
-  if (digits.length > 4) {
-    formatted += '/' + digits.slice(4, 8);
-  }
-  return formatted;
-};
+import {
+  formatCNIC,
+  validateCNIC,
+  formatPhone,
+  validatePhone,
+  formatDateInput,
+  toDbDate,
+  toDisplayDate,
+  validateDate,
+  validateDOBAge,
+  formatName,
+  validateName,
+  formatCode,
+  validateCode,
+  trimSpaces
+} from '../lib/validation.js';
 
 function FileAttachmentInput({ label, value, fieldName, code, onChange }) {
   const [uploading, setUploading] = useState(false);
@@ -154,6 +136,16 @@ export default function SMRecruitment({ searchFilter, clearSearchFilter }) {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const handleAddNew = (e) => {
+      if (e.detail?.page === 'sm') {
+        setModal({ open: true, mode: 'create', data: { ...EMPTY } });
+      }
+    };
+    window.addEventListener('trigger-add-new', handleAddNew);
+    return () => window.removeEventListener('trigger-add-new', handleAddNew);
+  }, []);
+
   const ssmOpts = ssms.map(s => ({ value: s.id, label: `${s.ssm_code} — ${s.ssm_name}` }));
   const amOpts = ams.map(a => ({ value: a.id, label: `${a.am_code} — ${a.am_name}` }));
 
@@ -167,23 +159,15 @@ export default function SMRecruitment({ searchFilter, clearSearchFilter }) {
 
   const validate = (d) => {
     const e = {};
-    if (!d.sm_code.trim()) e.sm_code = 'Required';
-    if (!d.sm_name.trim()) e.sm_name = 'Required';
-    if (!d.cnic.trim()) e.cnic = 'Required';
+    const codeErr = validateCode(d.sm_code); if (codeErr) e.sm_code = codeErr;
+    const nameErr = validateName(d.sm_name); if (nameErr) e.sm_name = nameErr;
+    const cnicErr = validateCNIC(d.cnic); if (cnicErr) e.cnic = cnicErr;
+    const phone1Err = validatePhone(d.contact_1); if (phone1Err) e.contact_1 = phone1Err;
+    const phone2Err = validatePhone(d.contact_2); if (phone2Err) e.contact_2 = phone2Err;
+    const regDateErr = validateDate(d.registration_date); if (regDateErr) e.registration_date = regDateErr;
+    const dobErr = validateDOBAge(d.dob); if (dobErr) e.dob = dobErr;
     if (!d.ssm_id) e.ssm_id = 'Required';
     if (!d.am_id) e.am_id = 'Required';
-    if (d.registration_date) {
-      const dbDate = toDbDate(d.registration_date);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dbDate) || isNaN(Date.parse(dbDate))) {
-        e.registration_date = 'Invalid date (use DD/MM/YYYY)';
-      }
-    }
-    if (d.dob) {
-      const dbDate = toDbDate(d.dob);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dbDate) || isNaN(Date.parse(dbDate))) {
-        e.dob = 'Invalid date (use DD/MM/YYYY)';
-      }
-    }
     return e;
   };
 
@@ -207,13 +191,32 @@ export default function SMRecruitment({ searchFilter, clearSearchFilter }) {
   };
 
   const handleSave = async () => {
-    const e = validate(modal.data);
-    if (Object.keys(e).length) { setErrors(e); return; }
+    const trimmedData = {
+      ...modal.data,
+      sm_code: trimSpaces(modal.data.sm_code).toUpperCase(),
+      sm_name: trimSpaces(modal.data.sm_name),
+      cnic: trimSpaces(modal.data.cnic),
+      contact_1: trimSpaces(modal.data.contact_1),
+      contact_2: trimSpaces(modal.data.contact_2),
+      relation: trimSpaces(modal.data.relation),
+      registration_no: trimSpaces(modal.data.registration_no).toUpperCase(),
+      address: trimSpaces(modal.data.address)
+    };
+    const e = validate(trimmedData);
+    if (Object.keys(e).length) {
+      setErrors(e);
+      setTimeout(() => {
+        const errEl = document.querySelector('.border-error, [class*="border-error"]');
+        if (errEl) errEl.focus();
+      }, 50);
+      toast('Please correct the validation errors before saving.', 'error');
+      return;
+    }
     setSaving(true);
     const payload = {
-      ...modal.data,
-      registration_date: toDbDate(modal.data.registration_date),
-      dob: toDbDate(modal.data.dob)
+      ...trimmedData,
+      registration_date: toDbDate(trimmedData.registration_date),
+      dob: toDbDate(trimmedData.dob)
     };
     try {
       const res = modal.mode === 'create' ? await api.createSM(payload) : await api.updateSM(payload);
@@ -242,13 +245,29 @@ export default function SMRecruitment({ searchFilter, clearSearchFilter }) {
 
   const handleExportExcel = async () => {
     toast('Generating Excel export of SM records...', 'info');
-    const res = await api.exportSMExcel(filtered);
-    if (res?.ok) {
-      toast(`Excel saved to: ${res.path}`, 'success');
-    } else if (res?.ok === false && res?.canceled) {
-      toast('Export cancelled', 'info');
-    } else {
-      toast(res?.error || 'Excel export failed', 'error');
+    try {
+      const latest = await api.listSM();
+      const latestFiltered = latest.filter(r => {
+        if (!search) return true;
+        const s = search.toLowerCase();
+        return r.sm_name?.toLowerCase().includes(s) ||
+               r.sm_code?.toLowerCase().includes(s) ||
+               r.cnic?.toLowerCase().includes(s) ||
+               r.contact_1?.toLowerCase().includes(s) ||
+               r.ssm_code?.toLowerCase().includes(s) ||
+               r.am_code?.toLowerCase().includes(s);
+      });
+      const res = await api.exportSMExcel(latestFiltered);
+      setRows(latest);
+      if (res?.ok) {
+        toast(`Excel saved to: ${res.path}`, 'success');
+      } else if (res?.ok === false && res?.canceled) {
+        toast('Export cancelled', 'info');
+      } else {
+        toast(res?.error || 'Excel export failed', 'error');
+      }
+    } catch {
+      toast('Excel export failed', 'error');
     }
   };
 
@@ -403,7 +422,7 @@ export default function SMRecruitment({ searchFilter, clearSearchFilter }) {
                 autoFocus
                 className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.sm_code ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.sm_code || ''} 
-                onChange={e => set('sm_code', e.target.value)} 
+                onChange={e => set('sm_code', formatCode(e.target.value))} 
               />
               {errors.sm_code && <span className="text-error text-xs mt-1">{errors.sm_code}</span>}
             </div>
@@ -413,7 +432,7 @@ export default function SMRecruitment({ searchFilter, clearSearchFilter }) {
               <input 
                 className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.sm_name ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.sm_name || ''} 
-                onChange={e => set('sm_name', e.target.value)} 
+                onChange={e => set('sm_name', formatName(e.target.value))} 
               />
               {errors.sm_name && <span className="text-error text-xs mt-1">{errors.sm_name}</span>}
             </div>
@@ -423,7 +442,7 @@ export default function SMRecruitment({ searchFilter, clearSearchFilter }) {
               <input 
                 className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
                 value={modal.data.relation || ''} 
-                onChange={e => set('relation', e.target.value)} 
+                onChange={e => set('relation', formatName(e.target.value))} 
               />
             </div>
 
@@ -433,7 +452,7 @@ export default function SMRecruitment({ searchFilter, clearSearchFilter }) {
                 className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.cnic ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.cnic || ''} 
                 placeholder="35201-XXXXXXX-X"
-                onChange={e => set('cnic', e.target.value)} 
+                onChange={e => set('cnic', formatCNIC(e.target.value))} 
               />
               {errors.cnic && <span className="text-error text-xs mt-1">{errors.cnic}</span>}
             </div>
@@ -441,19 +460,21 @@ export default function SMRecruitment({ searchFilter, clearSearchFilter }) {
             <div className="form-group">
               <label className="form-label">Contact 1</label>
               <input 
-                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
+                className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.contact_1 ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.contact_1 || ''} 
-                onChange={e => set('contact_1', e.target.value)} 
+                onChange={e => set('contact_1', formatPhone(e.target.value))} 
               />
+              {errors.contact_1 && <span className="text-error text-xs mt-1">{errors.contact_1}</span>}
             </div>
 
             <div className="form-group">
               <label className="form-label">Contact 2</label>
               <input 
-                className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
+                className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.contact_2 ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.contact_2 || ''} 
-                onChange={e => set('contact_2', e.target.value)} 
+                onChange={e => set('contact_2', formatPhone(e.target.value))} 
               />
+              {errors.contact_2 && <span className="text-error text-xs mt-1">{errors.contact_2}</span>}
             </div>
 
             <div className="form-group">
@@ -461,7 +482,7 @@ export default function SMRecruitment({ searchFilter, clearSearchFilter }) {
               <input 
                 className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
                 value={modal.data.registration_no || ''} 
-                onChange={e => set('registration_no', e.target.value)} 
+                onChange={e => set('registration_no', formatCode(e.target.value))} 
               />
             </div>
 
