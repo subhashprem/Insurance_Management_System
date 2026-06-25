@@ -357,27 +357,33 @@ export default function Settings({ user, onProfileUpdate, licenseInfo }) {
             <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
               <div>
                 <span className="text-on-surface-variant opacity-70 block text-[10px] uppercase tracking-wider font-bold">Status</span>
-                <span className="text-on-surface text-sm uppercase font-bold mt-1 inline-block">{licenseInfo?.status || 'Unknown'}</span>
+                <span className="text-on-surface text-sm uppercase font-bold mt-1 inline-block">
+                  {user?.role === 'developer' ? 'Valid' : (licenseInfo?.status || 'Unknown')}
+                </span>
               </div>
               <div>
                 <span className="text-on-surface-variant opacity-70 block text-[10px] uppercase tracking-wider font-bold">License Type</span>
-                <span className="text-on-surface text-sm uppercase font-bold mt-1 inline-block">{licenseInfo?.licenseType || 'Unknown'}</span>
+                <span className="text-on-surface text-sm uppercase font-bold mt-1 inline-block">
+                  {user?.role === 'developer' ? 'Full' : (licenseInfo?.licenseType || 'Unknown')}
+                </span>
               </div>
               <div>
                 <span className="text-on-surface-variant opacity-70 block text-[10px] uppercase tracking-wider font-bold">Activation Date</span>
                 <span className="text-on-surface text-sm font-mono font-bold mt-1 inline-block">
-                  {licenseInfo?.activationDate ? new Date(licenseInfo.activationDate).toLocaleDateString('en-GB') : '—'}
+                  {user?.role === 'developer' ? '—' : (licenseInfo?.activationDate ? new Date(licenseInfo.activationDate).toLocaleDateString('en-GB') : '—')}
                 </span>
               </div>
               <div>
                 <span className="text-on-surface-variant opacity-70 block text-[10px] uppercase tracking-wider font-bold">Expiry Date</span>
                 <span className="text-on-surface text-sm font-mono font-bold mt-1 inline-block">
-                  {licenseInfo?.expiryTs ? new Date(licenseInfo.expiryTs).toLocaleDateString('en-GB') : '—'}
+                  {user?.role === 'developer' ? 'Unlimited' : (licenseInfo?.expiryTs ? new Date(licenseInfo.expiryTs).toLocaleDateString('en-GB') : '—')}
                 </span>
               </div>
               <div>
                 <span className="text-on-surface-variant opacity-70 block text-[10px] uppercase tracking-wider font-bold">Remaining Days</span>
-                <span className="text-on-surface text-sm font-bold mt-1 inline-block">{licenseInfo?.daysLeft ?? '—'} Days</span>
+                <span className="text-on-surface text-sm font-bold mt-1 inline-block">
+                  {user?.role === 'developer' ? 'Unlimited' : (licenseInfo?.daysLeft !== undefined ? `${licenseInfo.daysLeft} Days` : '—')}
+                </span>
               </div>
               <div>
                 <span className="text-on-surface-variant opacity-70 block text-[10px] uppercase tracking-wider font-bold">Software Version</span>

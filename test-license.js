@@ -101,8 +101,8 @@ app.whenReady().then(() => {
     current.licenseType = 'trial';
     current.trialStarted = false;
     current.installTs = Date.now();
-    current.expiryTs = Date.now() + 3 * 24 * 60 * 60 * 1000;
-    current.licenseKey = generateLicenseKey(machineId, current.installTs, 'trial', 3);
+    current.expiryTs = 0;
+    current.licenseKey = '';
     current.firstLoginAlertSent = false;
     current.notified15Days = false;
     current.lastCheckedTs = Date.now();
@@ -115,6 +115,7 @@ app.whenReady().then(() => {
     current.licenseType = 'full';
     current.expiryTs = Date.now() + 15 * 24 * 60 * 60 * 1000 - 60000; // slightly less than 15 days
     current.notified15Days = false; // reset alert to trigger email
+    current.firstLoginAlertSent = true; // logged in
     current.lastCheckedTs = Date.now();
     saveAll(current);
     console.log('\n[SUCCESS]: Expiry set to ~14.9 days remaining.');

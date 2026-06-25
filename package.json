@@ -8,8 +8,8 @@
     "dev": "concurrently \"vite\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "build": "vite build",
     "postinstall": "electron-rebuild -f -w better-sqlite3,bcrypt",
-    "package": "node copy-db-to-project.js && npm run build && electron-builder",
-    "package:trial": "electron test-license.js clear && node copy-db-to-project.js && npm run build && electron-builder",
+    "package": "electron copy-db-to-project.js && npm run build && electron-builder",
+    "package:trial": "electron test-license.js clear && electron copy-db-to-project.js && npm run build && electron-builder",
     "license:gen": "node keygen.js",
     "license:test": "electron test-license.js"
   },
@@ -53,7 +53,13 @@
       "dist/**/*",
       "main/**/*",
       "package.json",
-      "sysconfig.dat"
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "sysconfig.dat",
+        "to": "sysconfig.dat"
+      }
     ],
     "win": {
       "target": "nsis",

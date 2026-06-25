@@ -1,6 +1,7 @@
 // CNIC Validation
 // Auto format: XXXXX-XXXXXXX-X, only digits allowed.
 export function formatCNIC(val) {
+  if (!val || typeof val !== 'string') return '';
   let digits = val.replace(/\D/g, '').slice(0, 13);
   let formatted = '';
   if (digits.length > 0) {
@@ -16,6 +17,9 @@ export function formatCNIC(val) {
 }
 
 export function validateCNIC(val) {
+  if (!val || typeof val !== 'string') {
+    return 'CNIC must contain exactly 13 digits.';
+  }
   const digits = val.replace(/\D/g, '');
   if (digits.length !== 13) {
     return 'CNIC must contain exactly 13 digits.';
@@ -29,11 +33,15 @@ export function validateCNIC(val) {
 // Phone Number Validation
 // Minimum length = 11, Maximum length = 12 digits, no "+", no spaces, no alphabets
 export function formatPhone(val) {
+  if (!val || typeof val !== 'string') return '';
   return val.replace(/\D/g, '').slice(0, 12);
 }
 
 export function validatePhone(val) {
   if (!val) return null; // optional
+  if (typeof val !== 'string') {
+    return 'Phone number must contain only digits and be between 11 and 12 digits.';
+  }
   const digits = val.replace(/\D/g, '');
   if (val.includes('+') || val.includes(' ') || /\D/.test(val)) {
     return 'Phone number must contain only digits and be between 11 and 12 digits.';
@@ -47,6 +55,7 @@ export function validatePhone(val) {
 // Date Validation
 // DD/MM/YYYY auto formatting while typing. No alphabets.
 export function formatDateInput(val) {
+  if (!val || typeof val !== 'string') return '';
   let digits = val.replace(/\D/g, '').slice(0, 8);
   let formatted = '';
   if (digits.length > 0) {
@@ -62,7 +71,7 @@ export function formatDateInput(val) {
 }
 
 export function toDbDate(displayDate) {
-  if (!displayDate) return '';
+  if (!displayDate || typeof displayDate !== 'string') return '';
   const parts = displayDate.split('/');
   if (parts.length === 3 && parts[2].length === 4) {
     return `${parts[2]}-${parts[1]}-${parts[0]}`;
@@ -71,7 +80,7 @@ export function toDbDate(displayDate) {
 }
 
 export function toDisplayDate(dbDate) {
-  if (!dbDate) return '';
+  if (!dbDate || typeof dbDate !== 'string') return '';
   const parts = dbDate.split('-');
   if (parts.length === 3 && parts[0].length === 4) {
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
@@ -81,6 +90,9 @@ export function toDisplayDate(dbDate) {
 
 export function validateDate(val) {
   if (!val) return null;
+  if (typeof val !== 'string') {
+    return 'Please enter a valid date in DD/MM/YYYY format.';
+  }
   const dbDate = toDbDate(val);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dbDate) || isNaN(Date.parse(dbDate))) {
     return 'Please enter a valid date in DD/MM/YYYY format.';
@@ -113,11 +125,12 @@ export function validateDOBAge(val) {
 // Name Validation
 // Allow alphabets, spaces, dot (.), hyphen (-). Block numbers / special chars.
 export function formatName(val) {
+  if (!val || typeof val !== 'string') return '';
   return val.replace(/[^A-Za-z\s.\-]/g, '');
 }
 
 export function validateName(val) {
-  if (!val || !val.trim()) return 'Required';
+  if (!val || typeof val !== 'string' || !val.trim()) return 'Required';
   if (!/^[A-Za-z\s.\-]+$/.test(val)) {
     return 'Only letters, spaces, dots, and hyphens are allowed.';
   }
@@ -127,11 +140,12 @@ export function validateName(val) {
 // Code Validation
 // Allow uppercase letters, numbers, hyphen (-), underscore (_).
 export function formatCode(val) {
+  if (!val || typeof val !== 'string') return '';
   return val.toUpperCase().replace(/[^A-Z0-9\-_]/g, '');
 }
 
 export function validateCode(val) {
-  if (!val || !val.trim()) return 'Required';
+  if (!val || typeof val !== 'string' || !val.trim()) return 'Required';
   if (!/^[A-Z0-9\-_]+$/.test(val)) {
     return 'Only uppercase letters, numbers, hyphens, and underscores are allowed.';
   }
@@ -141,7 +155,9 @@ export function validateCode(val) {
 // Premium / Amount Validation
 // Allow positive integers/decimals, max 2 decimals, only one dot, no commas/alphabets
 export function formatAmount(val) {
-  let clean = val.replace(/[^0-9.]/g, '');
+  if (val === undefined || val === null) return '';
+  const valStr = String(val);
+  let clean = valStr.replace(/[^0-9.]/g, '');
   const dotIndex = clean.indexOf('.');
   if (dotIndex !== -1) {
     const before = clean.substring(0, dotIndex);

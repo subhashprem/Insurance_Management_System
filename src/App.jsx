@@ -36,13 +36,18 @@ export default function App() {
   const handleLogin = (userData) => {
     setUser(userData);
     setActivePage('dashboard');
-    if (licenseInfo && userData?.role !== 'developer') {
-      if (licenseInfo.daysLeft <= 15 && licenseInfo.daysLeft > 0) {
-        alert(`${licenseInfo.daysLeft} days are remaining in the License Expiration`);
-      } else if (licenseInfo.daysLeft <= 30 && licenseInfo.daysLeft > 15) {
-        alert(`Your software license is expiring soon (${licenseInfo.daysLeft} days left). Please renew your license.`);
+    
+    // Fetch fresh license info because first login initializes/starts the license timer
+    window.electronAPI.licenseCheck().then(info => {
+      setLicenseInfo(info);
+      if (info && userData?.role !== 'developer') {
+        if (info.daysLeft <= 15 && info.daysLeft > 0) {
+          alert(`${info.daysLeft} days are remaining in the License Expiration`);
+        } else if (info.daysLeft <= 30 && info.daysLeft > 15) {
+          alert(`Your software license is expiring soon (${info.daysLeft} days left). Please renew your license.`);
+        }
       }
-    }
+    }).catch(() => {});
   };
 
   const handleLogout = () => {

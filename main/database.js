@@ -15,6 +15,26 @@ let _db = null;
 function getDb() {
   if (_db) return _db;
   if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
+
+  // Copy template database from packaged app directory if it doesn't exist in AppData
+  if (!fs.existsSync(DB_PATH)) {
+    const isDev = !app.isPackaged;
+    const templateDbPath = isDev
+      ? path.join(app.getAppPath(), 'sysconfig.dat')
+      : path.join(process.resourcesPath, 'sysconfig.dat');
+
+    if (fs.existsSync(templateDbPath)) {
+      try {
+        fs.copyFileSync(templateDbPath, DB_PATH);
+        getLogger().info(`Successfully copied template database from ${templateDbPath} to ${DB_PATH}`);
+      } catch (err) {
+        getLogger().error(`Failed to copy template database: ${err.message}`);
+      }
+    } else {
+      getLogger().warn(`No pre-packaged template database found at ${templateDbPath}. Initializing empty database.`);
+    }
+  }
+
   _db = new Database(DB_PATH);
   _db.pragma('journal_mode = WAL');
   _db.pragma('foreign_keys = ON');

@@ -61,7 +61,8 @@ function loadSyncConfig() {
     // Fail silently during early setup or table missing
   }
 
-  const candidates = [config1, config2, config3].filter(c => c && c.machineId);
+  const currentMachineId = machineIdSync({ original: true });
+  const candidates = [config1, config2, config3].filter(c => c && c.machineId === currentMachineId);
   if (candidates.length === 0) return null;
 
   candidates.sort((a, b) => {
@@ -77,6 +78,20 @@ function loadSyncConfig() {
   });
 
   const bestConfig = candidates[0];
+
+  // Strictly enforce: once a full license is active, never revert back to trial
+  const hasFull = candidates.some(c => c.licenseType === 'full');
+  if (hasFull && bestConfig.licenseType !== 'full') {
+    bestConfig.licenseType = 'full';
+    const fullCandidate = candidates.find(c => c.licenseType === 'full');
+    if (fullCandidate) {
+      if ((fullCandidate.expiryTs || 0) > (bestConfig.expiryTs || 0)) {
+        bestConfig.expiryTs = fullCandidate.expiryTs;
+        bestConfig.licenseKey = fullCandidate.licenseKey;
+      }
+    }
+  }
+
   saveSyncConfig(bestConfig);
   return bestConfig;
 }
@@ -177,7 +192,7 @@ function getCustomerDetails() {
 /**
  * Send licensing email to developer
  */
-async function sendLicenseEmail(subject, text) {
+async function sendLicenseEmail(subject, text, senderUser = null) {
   const log = getLogger();
 
   if (SMTP_CONFIG.auth.user.includes('your-sender-email') || SMTP_CONFIG.auth.pass.includes('your-gmail-app-password')) {
@@ -185,16 +200,30 @@ async function sendLicenseEmail(subject, text) {
     return false;
   }
 
-  const customer = getCustomerDetails();
+  let fromName = 'Client Admin';
+  let replyToEmail = SMTP_CONFIG.auth.user;
+
+  if (senderUser) {
+    fromName = decrypt(senderUser.name) || 'Admin User';
+    const email = (senderUser.contact_email ? decrypt(senderUser.contact_email) : null) || (senderUser.contact ? decrypt(senderUser.contact) : '');
+    if (email && email.includes('@')) {
+      replyToEmail = email;
+    }
+  } else {
+    const customer = getCustomerDetails();
+    fromName = customer.name || 'Client Admin';
+    if (customer.contact_email && customer.contact_email.includes('@')) {
+      replyToEmail = customer.contact_email;
+    }
+  }
+
   const toEmail = RECEIVER_EMAIL;
 
   try {
     const transporter = nodemailer.createTransport(SMTP_CONFIG);
-    const fromName = customer.name || 'Client Admin';
-    const fromEmail = customer.contact_email && customer.contact_email.includes('@') ? customer.contact_email : SMTP_CONFIG.auth.user;
     await transporter.sendMail({
       from: `"${fromName}" <${SMTP_CONFIG.auth.user}>`,
-      replyTo: fromEmail,
+      replyTo: replyToEmail,
       to: toEmail,
       subject: subject,
       text: text,
@@ -207,9 +236,6 @@ async function sendLicenseEmail(subject, text) {
   }
 }
 
-/**
- * Handle background alerting (silent retry)
- */
 async function sendAlertsInBackground(config, daysLeft) {
   const log = getLogger();
   let updated = false;
@@ -218,15 +244,17 @@ async function sendAlertsInBackground(config, daysLeft) {
   // 1. First run / Installation alert
   if (!config.installAlertSent) {
     log.info('Attempting first-run app installation email alert...');
+    const swVersion = app.getVersion();
+    const installDate = new Date(config.installTs).toLocaleString();
+
     const subject = `[INSTALLATION] New Installation - Machine ID: ${config.machineId}`;
     const text = `A new device has installed Insurance Management System of Lalwani Software Solutions.\n\n` +
       `MACHINE & LICENSE DETAILS:\n` +
       `----------------------------------------\n` +
       `Machine ID:          ${config.machineId}\n` +
-      `Initial Activation Key: ${config.licenseKey}\n` +
-      `Installation Date:   ${new Date(config.installTs).toLocaleString()}\n` +
-      `Initial Expiry Date: ${new Date(config.expiryTs).toLocaleDateString('en-GB')}\n` +
-      `Days Remaining:      ${daysLeft}\n`;
+      `Software Version:    ${swVersion}\n` +
+      `Installation Date:   ${installDate}\n` +
+      `License Type:        ${config.licenseType === 'trial' ? 'Trial' : 'Full'}\n`;
 
     const sent = await sendLicenseEmail(subject, text);
     if (sent) {
@@ -235,30 +263,41 @@ async function sendAlertsInBackground(config, daysLeft) {
     }
   }
 
-  // 2. 15-day Expiration Alert (with the current active activation key) to the developer.
+  // 2. Expiration Reminder (with the same active pending key) to the developer.
   // Must check daysLeft > 0 to prevent triggering warning emails when the license has already expired.
-  if (daysLeft <= 15 && daysLeft > 0 && !config.notified15Days) {
-    log.info('Attempting 15-day license expiration warning email with active key...');
-    const subject = `[RENEWAL KEY] License Expiring in ${daysLeft} Days - ID: ${config.machineId}`;
-    const text = `A client's software license is expiring soon (${daysLeft} days remaining).\n\n` +
-      `CLIENT DETAILS:\n` +
-      `----------------------------------------\n` +
-      `Customer Name:       ${customer.name}\n` +
-      `Operator Username:   ${customer.username}\n` +
-      `Contact Email:       ${customer.contact_email}\n` +
-      `Contact Number:      ${customer.contact_number}\n` +
-      `Account Created At:  ${customer.created_at}\n\n` +
-      `LICENSE & MACHINE DETAILS:\n` +
-      `----------------------------------------\n` +
-      `Machine ID: ${config.machineId}\n` +
-      `Activation Key (for renewal): ${config.licenseKey}\n` +
-      `Date of Renewal / Expiry: ${new Date(config.expiryTs).toLocaleDateString('en-GB')}\n` +
-      `Days Remaining:      ${daysLeft}\n`;
+  // Only send reminders if first login has occurred.
+  if (config.firstLoginAlertSent && daysLeft > 0) {
+    const isTrial = config.licenseType === 'trial';
+    const limit = isTrial ? 1 : 15; // 1 day for trial, 15 days for full license
 
-    const sent = await sendLicenseEmail(subject, text);
-    if (sent) {
-      config.notified15Days = true;
-      updated = true;
+    if (daysLeft <= limit && !config.notified15Days) {
+      log.info(`Attempting ${isTrial ? 'Trial Expiry' : '15-day Expiration'} warning email...`);
+      const subject = isTrial
+        ? `[TRIAL EXPIRED REMINDER] Trial License Expiring soon - ID: ${config.machineId}`
+        : `[RENEWAL KEY] License Expiring in ${daysLeft} Days - ID: ${config.machineId}`;
+
+      const text = (isTrial
+        ? `A client's trial software license is expiring soon (${daysLeft} days remaining).\n\n`
+        : `A client's software license is expiring soon (${daysLeft} days remaining).\n\n`) +
+        `CLIENT DETAILS:\n` +
+        `----------------------------------------\n` +
+        `Customer Name:       ${customer.name}\n` +
+        `Operator Username:   ${customer.username}\n` +
+        `Contact Email:       ${customer.contact_email}\n` +
+        `Contact Number:      ${customer.contact_number}\n` +
+        `Account Created At:  ${customer.created_at}\n\n` +
+        `LICENSE & MACHINE DETAILS:\n` +
+        `----------------------------------------\n` +
+        `Machine ID: ${config.machineId}\n` +
+        `Activation Key (for renewal): ${config.licenseKey}\n` +
+        `Date of Renewal / Expiry: ${new Date(config.expiryTs).toLocaleDateString('en-GB')}\n` +
+        `Days Remaining:      ${daysLeft}\n`;
+
+      const sent = await sendLicenseEmail(subject, text);
+      if (sent) {
+        config.notified15Days = true;
+        updated = true;
+      }
     }
   }
 
@@ -279,14 +318,14 @@ function checkLicense() {
   const trialDuration = 3 * 24 * 60 * 60 * 1000; // 3 Days
 
   if (!config) {
-    // First launch — initialize trial configuration
+    // First launch — initialize configuration
     const installTs = Date.now();
     config = {
       machineId,
       installTs,
-      expiryTs: installTs + trialDuration,
-      licenseKey: generateLicenseKey(machineId, installTs, 'trial', 3),
-      licenseType: 'trial',
+      expiryTs: 0, // Not active until first login
+      licenseKey: '', // Empty on installation
+      licenseType: 'trial', // Default fallback
       trialStarted: false,
       installAlertSent: false,
       firstLoginAlertSent: false,
@@ -295,7 +334,7 @@ function checkLicense() {
       lastCheckedTs: installTs
     };
     saveConfig(config);
-    log.info(`First launch — trial generated. Target expiry on login: 3 days.`);
+    log.info(`First launch — installation configuration generated.`);
   }
 
   // Ensure properties exist on loaded config (backward compatibility)
@@ -319,8 +358,8 @@ function checkLicense() {
   saveConfig(config);
 
   let daysLeft = 0;
-  if (config.licenseType === 'trial' && !config.trialStarted) {
-    daysLeft = 3;
+  if (!config.firstLoginAlertSent) {
+    daysLeft = config.licenseType === 'trial' ? 3 : 365;
   } else {
     const msLeft = config.expiryTs - now;
     daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
@@ -391,18 +430,44 @@ async function renewLicense(keyInput) {
 
   // 5. Update license parameters
   config.licenseType = details.licenseType || 'full';
-  config.licenseKey = keyInput;
-  if (config.licenseType === 'trial') {
-    config.trialStarted = false; // reset trial start for new trial keys if any
-  }
+  
+  // Immediately generate a new future renewal key after successful activation/upgrade.
+  // This new key becomes the next pending key.
+  const nextPendingKey = generateLicenseKey(machineId, Date.now(), 'full', 365);
+  config.licenseKey = nextPendingKey;
 
   // 6. Reset all warning flags
-  config.firstLoginAlertSent = false;
+  config.firstLoginAlertSent = true;
   config.notified15Days = false;
   config.lastCheckedTs = Date.now();
 
   // 7. Save config
   saveConfig(config);
+
+  // Send Renewal/Upgrade Confirmation Email to Developer
+  const customer = getCustomerDetails();
+  const newExpiryStr = new Date(config.expiryTs).toLocaleDateString('en-GB');
+  const subject = `[LICENSE ACTIVATED] Renewal Successful - ID: ${config.machineId}`;
+  const text = `A client has successfully activated/renewed their license.\n\n` +
+    `CLIENT DETAILS:\n` +
+    `----------------------------------------\n` +
+    `Customer Name:       ${customer.name}\n` +
+    `Operator Username:   ${customer.username}\n` +
+    `Contact Email:       ${customer.contact_email}\n` +
+    `Contact Number:      ${customer.contact_number}\n` +
+    `Account Created At:  ${customer.created_at}\n\n` +
+    `LICENSE & MACHINE DETAILS:\n` +
+    `----------------------------------------\n` +
+    `Machine ID:          ${config.machineId}\n` +
+    `Used/Consumed Key:   ${keyInput}\n` +
+    `New Pending Key:     ${nextPendingKey}\n` +
+    `New Expiry Date:     ${newExpiryStr}\n` +
+    `Days Remaining:      ${Math.ceil((config.expiryTs - Date.now()) / (24 * 60 * 60 * 1000))}\n`;
+
+  sendLicenseEmail(subject, text).catch(err => {
+    log.error(`Failed to send renewal confirmation email: ${err.message}`);
+  });
+
   log.info(`License activated/renewed successfully. Expiry extended by ${durationDays} days. New Type: ${config.licenseType}`);
 
   return true;
@@ -439,14 +504,7 @@ async function handleLoginAlerts(userRole, loggedInUser) {
   const config = getConfig();
   if (!config) return;
 
-  if (config.licenseType === 'trial' && !config.trialStarted) {
-    config.trialStarted = true;
-    config.trialStartTs = Date.now();
-    config.expiryTs = config.trialStartTs + 3 * 24 * 60 * 60 * 1000;
-    config.lastCheckedTs = Date.now();
-    saveConfig(config);
-    log.info(`Trial started at login! Expiry set to: ${new Date(config.expiryTs).toISOString()}`);
-  }
+
 
   const isRenewal = config.usedKeys && config.usedKeys.length > 0;
 
@@ -470,9 +528,28 @@ async function handleLoginAlerts(userRole, loggedInUser) {
   if (!config.firstLoginAlertSent) {
     log.info(`Successful login for role: ${userRole}. Attempting first login email notification...`);
 
+    const isTrial = config.licenseType === 'trial';
+    
+    // 1. Start the countdown timer
+    const now = Date.now();
+    if (isTrial) {
+      config.trialStarted = true;
+      config.trialStartTs = now;
+      config.expiryTs = now + 3 * 24 * 60 * 60 * 1000;
+    } else {
+      config.expiryTs = now + 365 * 24 * 60 * 60 * 1000;
+    }
+    config.lastCheckedTs = now;
+
+    // 2. Generate and save the Pending Activation Key
+    config.licenseKey = generateLicenseKey(config.machineId, config.installTs, 'full', 365);
+
     const subject = isRenewal
       ? `[RENEWAL LOGIN] First Login After Renewal - User: ${customer.username}`
       : `[FIRST LOGIN] First Login After Installation - User: ${customer.username}`;
+
+    const expiryDateStr = new Date(config.expiryTs).toLocaleDateString('en-GB');
+    const daysLeft = isTrial ? 3 : 365;
 
     const text = (isRenewal
       ? `A client has logged in for the first time after renewing Insurance Management System.\n\n`
@@ -489,11 +566,12 @@ async function handleLoginAlerts(userRole, loggedInUser) {
       `Machine ID:          ${config.machineId}\n` +
       `Activation Key:      ${config.licenseKey}\n` +
       `Software Created At: ${new Date(config.installTs).toLocaleString()}\n` +
-      `Date of Renewal / Expiry: ${new Date(config.expiryTs).toLocaleDateString('en-GB')}\n` +
+      `License Type:        ${isTrial ? 'Trial' : 'Full'}\n` +
+      `License Expiry Date: ${expiryDateStr}\n` +
       `Days Remaining:      ${daysLeft}\n` +
-      `Login Date/Time:     ${new Date().toLocaleString()}\n`;
+      `Login Date/Time:     ${new Date(now).toLocaleString()}\n`;
 
-    const sent = await sendLicenseEmail(subject, text);
+    const sent = await sendLicenseEmail(subject, text, loggedInUser);
     if (sent) {
       config.firstLoginAlertSent = true;
       saveConfig(config);

@@ -106,19 +106,27 @@ export default function LicenseRenewalModal({ open, onClose, licenseInfo, onLice
           <div className="bg-surface-deep/40 border border-border-subtle rounded-xl p-4 grid grid-cols-2 gap-3">
             <div>
               <span className="text-[10px] uppercase font-bold tracking-wider text-outline-variant">Status</span>
-              <p className="font-bold text-sm text-on-surface uppercase mt-0.5">{licenseInfo?.status || 'Unknown'}</p>
+              <p className="font-bold text-sm text-on-surface uppercase mt-0.5">
+                {user?.role === 'developer' ? 'Valid' : (licenseInfo?.status || 'Unknown')}
+              </p>
             </div>
             <div>
               <span className="text-[10px] uppercase font-bold tracking-wider text-outline-variant">License Type</span>
-              <p className="font-bold text-sm text-on-surface uppercase mt-0.5">{licenseInfo?.licenseType || 'Unknown'}</p>
+              <p className="font-bold text-sm text-on-surface uppercase mt-0.5">
+                {user?.role === 'developer' ? 'Full' : (licenseInfo?.licenseType || 'Unknown')}
+              </p>
             </div>
             <div>
               <span className="text-[10px] uppercase font-bold tracking-wider text-outline-variant">Remaining Days</span>
-              <p className="font-bold text-sm text-on-surface mt-0.5">{licenseInfo?.daysLeft ?? '—'} Days</p>
+              <p className="font-bold text-sm text-on-surface mt-0.5">
+                {user?.role === 'developer' ? 'Unlimited' : (licenseInfo?.daysLeft !== undefined ? `${licenseInfo.daysLeft} Days` : '—')}
+              </p>
             </div>
             <div>
               <span className="text-[10px] uppercase font-bold tracking-wider text-outline-variant">Expiry Date</span>
-              <p className="font-bold text-sm text-on-surface mt-0.5">{formatDate(licenseInfo?.expiryTs)}</p>
+              <p className="font-bold text-sm text-on-surface mt-0.5">
+                {user?.role === 'developer' ? 'Unlimited' : formatDate(licenseInfo?.expiryTs)}
+              </p>
             </div>
           </div>
         </div>

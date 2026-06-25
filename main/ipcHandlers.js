@@ -1366,9 +1366,37 @@ function handleBackup() {
     archive.pipe(output);
     const dbPath  = path.join(app.getPath('userData'), 'appdata', 'sysconfig.dat');
     const imgPath = path.join(app.getPath('userData'), 'images');
-    if (fs.existsSync(dbPath)) archive.file(dbPath, { name: 'sysconfig.dat' });
+    
+    let tempBackupPath = null;
+    if (fs.existsSync(dbPath)) {
+      try {
+        tempBackupPath = path.join(app.getPath('temp'), `sysconfig_backup_${Date.now()}.dat`);
+        const Database = require('better-sqlite3');
+        const tempDb = new Database(dbPath, { readonly: true });
+        await tempDb.backup(tempBackupPath);
+        tempDb.close();
+        archive.file(tempBackupPath, { name: 'sysconfig.dat' });
+      } catch (err) {
+        log().error(`Failed to create database backup copy: ${err.message}`);
+        // Fallback to copy the raw file directly if backup fails
+        archive.file(dbPath, { name: 'sysconfig.dat' });
+      }
+    }
+    
     if (fs.existsSync(imgPath)) archive.directory(imgPath, 'images');
     await archive.finalize();
+    
+    // Clean up temporary database copy when stream closes
+    if (tempBackupPath) {
+      output.on('close', () => {
+        try {
+          if (fs.existsSync(tempBackupPath)) fs.unlinkSync(tempBackupPath);
+        } catch (err) {
+          log().error(`Failed to clean up temp backup file: ${err.message}`);
+        }
+      });
+    }
+    
     log().info(`Backup downloaded to: ${result.filePath}`);
     return { ok: true, path: result.filePath };
   });
@@ -2359,13 +2387,15 @@ function handleDatabaseReset() {
     const log = getLogger();
     log.info('Starting UI-triggered package & build process...');
     try {
-      // 1. Close database connection to checkpoint SQLite WAL file, then copy database to root
-      closeDb();
+      // 1. Safely backup and copy the active database using SQLite native backup API to preserve WAL changes
       const sourceDb = path.join(app.getPath('userData'), 'appdata', 'sysconfig.dat');
       const targetDb = path.join(app.getAppPath(), 'sysconfig.dat');
       if (fs.existsSync(sourceDb)) {
-        fs.copyFileSync(sourceDb, targetDb);
-        log.info('Database checkpointed and copied to project root successfully.');
+        const Database = require('better-sqlite3');
+        const tempDb = new Database(sourceDb, { readonly: true });
+        await tempDb.backup(targetDb);
+        tempDb.close();
+        log.info('Database backed up and copied to project root successfully using native SQLite backup API.');
       } else {
         log.warn('No source database found to copy.');
       }

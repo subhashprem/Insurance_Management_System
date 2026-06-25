@@ -323,7 +323,7 @@ export default function AreaManager({ searchFilter, clearSearchFilter }) {
                 className={`w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm ${errors.cnic ? 'border-error focus:border-error' : ''}`}
                 value={modal.data.cnic || ''} 
                 placeholder="35201-XXXXXXX-X"
-                onChange={e => set('cnic', e.target.value)} 
+                onChange={e => set('cnic', formatCNIC(e.target.value))} 
               />
               {errors.cnic && <span className="text-error text-xs mt-1">{errors.cnic}</span>}
             </div>
@@ -333,7 +333,7 @@ export default function AreaManager({ searchFilter, clearSearchFilter }) {
               <input 
                 className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
                 value={modal.data.contact_1 || ''} 
-                onChange={e => set('contact_1', e.target.value)} 
+                onChange={e => set('contact_1', formatPhone(e.target.value))} 
               />
             </div>
 
@@ -342,7 +342,7 @@ export default function AreaManager({ searchFilter, clearSearchFilter }) {
               <input 
                 className="w-full bg-surface-deep border border-border-subtle rounded px-4 py-2.5 text-on-surface focus:border-primary focus:outline-none transition-all placeholder:text-outline-variant font-body-md text-sm"
                 value={modal.data.contact_2 || ''} 
-                onChange={e => set('contact_2', e.target.value)} 
+                onChange={e => set('contact_2', formatPhone(e.target.value))} 
               />
             </div>
           </div>
